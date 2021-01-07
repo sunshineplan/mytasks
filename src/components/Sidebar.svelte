@@ -1,6 +1,6 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { List, current } from "../stores";
+  import { List, current, component } from "../stores";
 
   export let lists: List[];
 
@@ -12,13 +12,18 @@
     showSidebar = !showSidebar;
   };
 
+  const goto = (list: List) => {
+    $current = list;
+    $component = "tasks";
+  };
+
   const arrow = (event: KeyboardEvent) => {
     const len = lists.length;
     var index = lists.findIndex((list) => list.id === $current.id);
     if (event.key == "ArrowUp") {
-      if (index > 0) $current = lists[index - 1];
+      if (index > 0) goto(lists[index - 1]);
     } else if (event.key == "ArrowDown")
-      if (index < len - 1) $current = lists[index + 1];
+      if (index < len - 1) goto(lists[index + 1]);
   };
   const add = () => {
     if (window.innerWidth <= 900) showSidebar = false;
@@ -123,12 +128,12 @@
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={add}> Add List </button>
     <ul class="navbar-nav">
-      {#each lists as list}
+      {#each lists as list (list.id)}
         <li>
           <span
             class="nav-link list"
             class:active={$current.id === list.id}
-            on:click={() => ($current = list)}>
+            on:click={() => goto(list)}>
             {list.list}
             ({list.count})
           </span>

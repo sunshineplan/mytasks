@@ -2,9 +2,21 @@
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
   import { BootstrapButtons, post } from "../misc";
-  import { current, tasks } from "../stores";
+  import { current, loading, tasks } from "../stores";
 
   let currentTasks = $tasks[$current.list];
+
+  const getTasks = async () => {
+    if (!$tasks.hasOwnProperty($current.list)) {
+      $loading++;
+      const resp = await post("/task/get", { list: $current.id });
+      $tasks[$current.list] = await resp.json();
+      $loading--;
+    }
+    currentTasks = $tasks[$current.list];
+  };
+
+  $: $current, getTasks();
 
   onMount(() => {
     const sortable = new Sortable(
@@ -79,7 +91,7 @@
     <button class="btn btn-primary" on:click={add}>Add Task</button>
   </header>
   <ul class="list-group list-group-flush" id="mytasks">
-    {#each currentTasks as task}
+    {#each currentTasks as task (task.id)}
       <li class="list-group-item">{task.task}</li>
     {/each}
   </ul>
