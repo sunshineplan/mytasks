@@ -1,0 +1,49 @@
+:root {
+  --sk-color: #1a73e8;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Microsoft YaHei New", "Microsoft Yahei", 微软雅黑, 宋体, SimSun, STXihei, 华文细黑, sans-serif;
+}
+
+header {
+  height: 100px;
+}
+
+.content {
+  position: fixed;
+  top: 0;
+  padding-top: 90px;
+  height: 100%;
+  width: 100%;
+}
+
+.form {
+  padding: 0 20px;
+}
+
+.form-control {
+  width: 250px;
+}
+
+.swal {
+  margin: 8px 6px;
+}
+
+button+button {
+  margin-left: 0.3em;
+}
+
+.delete {
+  margin-top: 8px;
+}
+
+.sortable-ghost {
+  opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .content {
+    padding-left: 0 !important;
+  }
+}
