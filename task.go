@@ -11,7 +11,7 @@ import (
 
 type task struct {
 	ID   int    `json:"id"`
-	Task string `json:"name"`
+	Task string `json:"task"`
 	List string `json:"list"`
 }
 
@@ -22,7 +22,7 @@ func getTask(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	stmt := "SELECT %s FROM tasks WHERE"
 
@@ -63,7 +63,7 @@ func getTask(c *gin.Context) {
 }
 
 func addTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	var task task
 	if err := c.BindJSON(&task); err != nil {
@@ -101,7 +101,7 @@ func addTask(c *gin.Context) {
 }
 
 func editTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -161,7 +161,7 @@ func editTask(c *gin.Context) {
 }
 
 func deleteTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -179,7 +179,7 @@ func deleteTask(c *gin.Context) {
 }
 
 func reorder(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	var reorder struct{ Old, New int }
 	if err := c.BindJSON(&reorder); err != nil {

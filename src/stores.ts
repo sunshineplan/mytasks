@@ -7,18 +7,15 @@ export interface List {
     seq: number
 }
 
-interface Task {
+export interface Task {
     id: number
     task: string
     seq: number
 }
 
-interface Tasks {
-    [ListName: string]: Task[]
-}
-
 export const username = writable('')
 export const component = writable('tasks')
-export const current = writable({} as List)
-export const tasks = writable({} as Tasks)
+export const current = writable({ id: 0 } as List)
+export const last = writable({} as List)
+export const tasks = writable({} as { [ListName: string]: Task[] })
 export const loading = writable(0)

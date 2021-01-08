@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import { BootstrapButtons, post } from "../misc";
-  import { username as user } from "../stores";
+
+  const dispatch = createEventDispatcher();
 
   let username = "";
   let password = "";
@@ -35,7 +37,7 @@
       });
       if (!resp.ok)
         await BootstrapButtons.fire("Error", await resp.text(), "error");
-      else user.set(username);
+      else dispatch("info");
     }
   };
 </script>

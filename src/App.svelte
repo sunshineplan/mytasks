@@ -4,19 +4,28 @@
   import Sidebar from "./components/Sidebar.svelte";
   import Tasks from "./components/Tasks.svelte";
   import { post } from "./misc";
-  import { username as user, component, tasks, loading, List } from "./stores";
+  import {
+    username as user,
+    current,
+    component,
+    tasks,
+    loading,
+    List,
+  } from "./stores";
 
-  let lists: List[];
+  let lists: List[] = [];
 
-  const getLists = async () => {
-    let resp = await post("/list/get");
-    lists = await resp.json();
+  const getInfo = async () => {
+    const resp = await fetch("/info");
+    const info = await resp.json();
+    if (Object.keys(info).length) {
+      $user = info.username;
+      lists = info.lists;
+    } else return;
     lists.sort((a, b) => a.seq - b.seq);
-    resp = await post("/task/get", { list: lists[0].id });
-    $tasks[lists[0].list] = await resp.json();
+    if (lists.length) if (!$current.id) $current = lists[0];
   };
-
-  const promise = getLists();
+  const promise = getInfo();
 
   const components = {
     setting: Setting,
@@ -27,6 +36,65 @@
     component.set("setting");
   };
 </script>
+
+<style>
+  .topbar {
+    position: fixed;
+    top: 0px;
+    z-index: 2;
+    width: 100%;
+    height: 70px;
+    padding: 0 10px 0 0;
+    background-color: #1a73e8;
+    user-select: none;
+  }
+
+  .topbar .nav-link {
+    padding-left: 8px;
+    padding-right: 8px;
+    color: white !important;
+  }
+
+  .topbar .link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .brand {
+    padding-left: 20px;
+    margin: auto;
+    font-size: 25px;
+    letter-spacing: 0.3px;
+    color: white;
+  }
+
+  .brand:hover {
+    color: white;
+    text-decoration: none;
+  }
+
+  .loading {
+    position: fixed;
+    z-index: 2;
+    top: 70px;
+    left: 250px;
+    height: calc(100% - 70px);
+    width: calc(100% - 250px);
+    display: flex;
+  }
+
+  @media (max-width: 900px) {
+    .brand {
+      padding-left: 10px;
+    }
+
+    .loading {
+      left: 0;
+      width: 100%;
+    }
+  }
+</style>
 
 <nav class="navbar navbar-light topbar">
   <div class="d-flex" style="height: 100%">
@@ -43,10 +111,10 @@
   {/if}
 </nav>
 {#if !$user}
-  <Login />
+  <Login on:info={getInfo} />
 {:else}
+  <Sidebar bind:lists />
   {#await promise then _}
-    <Sidebar bind:lists />
     <div
       class="content"
       style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}">

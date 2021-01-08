@@ -4,7 +4,6 @@
 
   export let lists: List[];
 
-  $current = lists[0];
   let hover = false;
   let showSidebar = true;
 
@@ -19,11 +18,12 @@
 
   const arrow = (event: KeyboardEvent) => {
     const len = lists.length;
-    var index = lists.findIndex((list) => list.id === $current.id);
-    if (event.key == "ArrowUp") {
-      if (index > 0) goto(lists[index - 1]);
-    } else if (event.key == "ArrowDown")
-      if (index < len - 1) goto(lists[index + 1]);
+    const index = lists.findIndex((list) => list.id === $current.id);
+    if ($current.id)
+      if (event.key == "ArrowUp") {
+        if (index > 0) goto(lists[index - 1]);
+      } else if (event.key == "ArrowDown")
+        if (index < len - 1) goto(lists[index + 1]);
   };
   const add = () => {
     if (window.innerWidth <= 900) showSidebar = false;

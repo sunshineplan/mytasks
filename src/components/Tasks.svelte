@@ -2,9 +2,9 @@
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
   import { BootstrapButtons, post } from "../misc";
-  import { current, loading, tasks } from "../stores";
+  import { current, loading, tasks, Task } from "../stores";
 
-  let currentTasks = $tasks[$current.list];
+  let currentTasks: Task[] = [];
 
   const getTasks = async () => {
     if (!$tasks.hasOwnProperty($current.list)) {
@@ -16,7 +16,7 @@
     currentTasks = $tasks[$current.list];
   };
 
-  $: $current, getTasks();
+  $: $current && getTasks();
 
   onMount(() => {
     const sortable = new Sortable(

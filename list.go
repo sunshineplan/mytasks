@@ -12,7 +12,7 @@ import (
 
 type list struct {
 	ID    int    `json:"id"`
-	Name  string `json:"name"`
+	Name  string `json:"list"`
 	Count int    `json:"count"`
 }
 
@@ -46,32 +46,26 @@ func getListID(list string, userID int) (int, error) {
 	}
 }
 
-func getList(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
-
+func getList(userID interface{}) ([]list, error) {
 	rows, err := db.Query("SELECT id, list, count FROM lists WHERE user_id = ?", userID)
 	if err != nil {
-		log.Println("Failed to get lists:", err)
-		c.String(500, "")
-		return
+		return nil, err
 	}
 	defer rows.Close()
 	lists := []list{}
 	for rows.Next() {
 		var list list
 		if err := rows.Scan(&list.ID, &list.Name, &list.Count); err != nil {
-			log.Println("Failed to scan list:", err)
-			c.String(500, "")
-			return
+			return nil, err
 		}
 		lists = append(lists, list)
 	}
 
-	c.JSON(200, lists)
+	return lists, nil
 }
 
 func addList(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	var list list
 	if err := c.BindJSON(&list); err != nil {
@@ -110,7 +104,7 @@ func addList(c *gin.Context) {
 }
 
 func editList(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -168,7 +162,7 @@ func editList(c *gin.Context) {
 }
 
 func deleteList(c *gin.Context) {
-	userID := sessions.Default(c).Get("user_id")
+	userID := sessions.Default(c).Get("userID")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Println("Failed to get id param:", err)
