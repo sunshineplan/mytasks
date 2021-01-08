@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 
@@ -12,35 +11,36 @@ import (
 type task struct {
 	ID   int    `json:"id"`
 	Task string `json:"task"`
-	List string `json:"list"`
+	List int    `json:"list"`
+}
+
+func checkTask(taskID, userID interface{}) bool {
+	var exist string
+	if err := db.QueryRow("SELECT task FROM tasks WHERE task_id = ? AND user_id = ?",
+		taskID, userID).Scan(&exist); err == nil {
+		return true
+	}
+	return false
+}
+
+func checkAll(taskID, listID, userID interface{}) bool {
+	var exist string
+	if err := db.QueryRow("SELECT task FROM tasks WHERE task_id = ? AND list_id = ? AND user_id = ?",
+		taskID, listID, userID).Scan(&exist); err == nil {
+		return true
+	}
+	return false
 }
 
 func getTask(c *gin.Context) {
-	var r struct{ List int }
+	var r task
 	if err := c.BindJSON(&r); err != nil {
 		c.String(400, "")
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-
-	stmt := "SELECT %s FROM tasks WHERE"
-
-	var args []interface{}
-	switch r.List {
-	case -1:
-		stmt += " user_id = ?"
-		args = append(args, userID)
-	case 0:
-		stmt += " list_id = 0 AND user_id = ?"
-		args = append(args, userID)
-	default:
-		stmt += " list_id = ? AND user_id = ?"
-		args = append(args, r.List)
-		args = append(args, userID)
-	}
-
-	rows, err := db.Query(fmt.Sprintf(stmt, "task_id, task, list"), args...)
+	rows, err := db.Query("SELECT task_id, task, list FROM tasks WHERE list_id = ? AND user_id = ?",
+		r.List, sessions.Default(c).Get("userID"))
 	if err != nil {
 		log.Println("Failed to get tasks:", err)
 		c.String(500, "")
@@ -50,46 +50,30 @@ func getTask(c *gin.Context) {
 	tasks := []task{}
 	for rows.Next() {
 		var task task
-		var listByte []byte
-		if err := rows.Scan(&task.ID, &task.Task, &listByte); err != nil {
+		if err := rows.Scan(&task.ID, &task.Task, &task.List); err != nil {
 			log.Println("Failed to scan tasks:", err)
 			c.String(500, "")
 			return
 		}
-		task.List = string(listByte)
 		tasks = append(tasks, task)
 	}
 	c.JSON(200, tasks)
 }
 
 func addTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
-
 	var task task
 	if err := c.BindJSON(&task); err != nil {
 		c.String(400, "")
 		return
 	}
 
-	listID, err := getListID(task.List, userID.(int))
-	if err != nil {
-		log.Println("Failed to get list id:", err)
-		c.String(500, "")
-		return
-	}
-
-	var message string
-	var errorCode int
-	switch {
-	case task.Task == "":
-		message = "Task is empty."
-		errorCode = 1
-	case listID == -1:
-		message = "List name exceeded length limit."
-		errorCode = 2
-	default:
-		if _, err := db.Exec("INSERT INTO task (task, user_id, list_id) VALUES (?, ?, ?)",
-			task.Task, userID, listID); err != nil {
+	if checkList(task.List, sessions.Default(c).Get("userID")) {
+		if task.Task == "" {
+			c.JSON(200, gin.H{"status": 0, "message": "Task is empty."})
+			return
+		}
+		if _, err := db.Exec("INSERT INTO task (task, list_id) VALUES (?, ?)",
+			task.Task, task.List); err != nil {
 			log.Println("Failed to add task:", err)
 			c.String(500, "")
 			return
@@ -97,59 +81,29 @@ func addTask(c *gin.Context) {
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
-	c.JSON(200, gin.H{"status": 0, "message": message, "error": errorCode})
+	c.String(403, "")
 }
 
 func editTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
-
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Println("Failed to get id param:", err)
 		c.String(400, "")
 		return
 	}
-	var new task
-	if err := c.BindJSON(&new); err != nil {
+	var task task
+	if err := c.BindJSON(&task); err != nil {
 		c.String(400, "")
 		return
 	}
 
-	bc := make(chan error, 1)
-	var old task
-	go func() {
-		var oldList []byte
-		bc <- db.QueryRow("SELECT task, list FROM tasks WHERE task_id = ? AND user_id = ?",
-			id, userID).Scan(&old.Task, &oldList)
-		old.List = string(oldList)
-	}()
-	listID, err := getListID(new.List, userID.(int))
-	if err != nil {
-		log.Println("Failed to get list id:", err)
-		c.String(500, "")
-		return
-	}
-
-	if err := <-bc; err != nil {
-		log.Println(err)
-		c.String(500, "")
-		return
-	}
-
-	var message string
-	var errorCode int
-	switch {
-	case new.Task == "":
-		message = "Task is empty."
-		errorCode = 1
-	case old == new:
-		message = "New task is same as old task."
-	case listID == -1:
-		message = "List name exceeded length limit."
-		errorCode = 2
-	default:
-		if _, err := db.Exec("UPDATE task SET task = ?, list_id = ? WHERE id = ? AND user_id = ?",
-			new.Task, listID, id, userID); err != nil {
+	if checkAll(id, task.List, sessions.Default(c).Get("userID")) {
+		if task.Task == "" {
+			c.JSON(200, gin.H{"status": 0, "message": "Task is empty."})
+			return
+		}
+		if _, err := db.Exec("UPDATE task SET task = ? WHERE id = ? AND list_id = ?",
+			task.Task, id, task.List); err != nil {
 			log.Println("Failed to edit task:", err)
 			c.String(500, "")
 			return
@@ -157,12 +111,10 @@ func editTask(c *gin.Context) {
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
-	c.JSON(200, gin.H{"status": 0, "message": message, "error": errorCode})
+	c.String(403, "")
 }
 
 func deleteTask(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
-
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Println("Failed to get id param:", err)
@@ -170,31 +122,39 @@ func deleteTask(c *gin.Context) {
 		return
 	}
 
-	if _, err := db.Exec("DELETE FROM task WHERE id = ? and user_id = ?", id, userID); err != nil {
-		log.Println("Failed to delete task:", err)
-		c.String(500, "")
+	if checkTask(id, sessions.Default(c).Get("userID")) {
+		if _, err := db.Exec("DELETE FROM task WHERE id = ?", id); err != nil {
+			log.Println("Failed to delete task:", err)
+			c.String(500, "")
+			return
+		}
+		c.JSON(200, gin.H{"status": 1})
 		return
 	}
-	c.JSON(200, gin.H{"status": 1})
+	c.String(403, "")
 }
 
 func reorder(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
-
-	var reorder struct{ Old, New int }
+	var reorder struct{ List, Old, New int }
 	if err := c.BindJSON(&reorder); err != nil {
 		c.String(400, "")
+		return
+	}
+
+	userID := sessions.Default(c).Get("userID")
+	if !checkAll(reorder.Old, reorder.List, userID) || !checkAll(reorder.New, reorder.List, userID) {
+		c.String(403, "")
 		return
 	}
 
 	ec := make(chan error, 1)
 	var oldSeq, newSeq int
 	go func() {
-		ec <- db.QueryRow("SELECT seq FROM seq WHERE task_id = ? AND user_id = ?",
-			reorder.Old, userID).Scan(&oldSeq)
+		ec <- db.QueryRow("SELECT seq FROM seq WHERE task_id = ?",
+			reorder.Old).Scan(&oldSeq)
 	}()
-	if err := db.QueryRow("SELECT seq FROM seq WHERE task_id = ? AND user_id = ?",
-		reorder.New, userID).Scan(&newSeq); err != nil {
+	if err := db.QueryRow("SELECT seq FROM seq WHERE task_id = ?",
+		reorder.New).Scan(&newSeq); err != nil {
 		log.Println("Failed to scan new seq:", err)
 		c.String(500, "")
 		return
@@ -207,19 +167,19 @@ func reorder(c *gin.Context) {
 
 	var err error
 	if oldSeq > newSeq {
-		_, err = db.Exec("UPDATE seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND user_id = ?",
-			newSeq, oldSeq, userID)
+		_, err = db.Exec("UPDATE seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND list_id = ?",
+			newSeq, oldSeq, reorder.List)
 	} else {
-		_, err = db.Exec("UPDATE seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND user_id = ?",
-			oldSeq, newSeq, userID)
+		_, err = db.Exec("UPDATE seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND list_id = ?",
+			oldSeq, newSeq, reorder.List)
 	}
 	if err != nil {
 		log.Println("Failed to update other seq:", err)
 		c.String(500, "")
 		return
 	}
-	if _, err := db.Exec("UPDATE seq SET seq = ? WHERE task_id = ? AND user_id = ?",
-		newSeq, reorder.Old, userID); err != nil {
+	if _, err := db.Exec("UPDATE seq SET seq = ? WHERE task_id = ?",
+		newSeq, reorder.Old); err != nil {
 		log.Println("Failed to update seq:", err)
 		c.String(500, "")
 		return

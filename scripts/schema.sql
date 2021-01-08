@@ -18,20 +18,19 @@ CREATE TABLE task (
   id INT PRIMARY KEY AUTO_INCREMENT,
   task VARCHAR(40) NOT NULL,
   created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  user_id INT NOT NULL,
   list_id INT NOT NULL
 );
 
 CREATE TABLE seq (
-  user_id INT NOT NULL,
+  list_id INT NOT NULL,
   task_id INT NOT NULL,
   seq INT NOT NULL
 );
 
 CREATE VIEW tasks AS
-  SELECT task.user_id, task.id task_id, task, task.list_id, list, seq
+  SELECT user_id, task.id task_id, task, task.list_id, list, seq
   FROM task LEFT JOIN list ON task.list_id = list.id
-  LEFT JOIN seq ON task.user_id = seq.user_id AND task.id = seq.task_id
+  LEFT JOIN seq ON task.list_id = seq.list_id AND task.id = seq.task_id
   ORDER BY seq;
 
 CREATE VIEW lists AS
@@ -44,24 +43,24 @@ CREATE TRIGGER add_user AFTER INSERT ON user
 FOR EACH ROW BEGIN
     INSERT INTO list (user_id, list)
     VALUES (new.id, 'My Tasks');
-    INSERT INTO task (user_id, list_id, task)
-    VALUES (new.id, LAST_INSERT_ID(), 'Welcome to use mytasks!');
+    INSERT INTO task (list_id, task)
+    VALUES (LAST_INSERT_ID(), 'Welcome to use mytasks!');
 END;;
 
 CREATE TRIGGER add_seq AFTER INSERT ON task
 FOR EACH ROW BEGIN
-    SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM seq WHERE user_id = new.user_id);
-    INSERT INTO seq (user_id, task_id, seq)
-    VALUES (new.user_id, new.id, @seq);
+    SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM seq WHERE list_id = new.list_id);
+    INSERT INTO seq (list_id, task_id, seq)
+    VALUES (new.list_id, new.id, @seq);
 END;;
 
 CREATE TRIGGER reorder AFTER DELETE ON task
 FOR EACH ROW BEGIN
-    SET @seq := (SELECT seq FROM seq WHERE user_id = old.user_id AND task_id = old.id);
+    SET @seq := (SELECT seq FROM seq WHERE list_id = old.list_id AND task_id = old.id);
     DELETE FROM seq
-    WHERE user_id = old.user_id AND seq = @seq;
+    WHERE list_id = old.list_id AND seq = @seq;
     UPDATE seq SET seq = seq-1
-    WHERE user_id = old.user_id AND seq > @seq;
+    WHERE list_id = old.list_id AND seq > @seq;
 END;;
 DELIMITER ;
 

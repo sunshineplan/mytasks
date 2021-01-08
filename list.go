@@ -16,34 +16,13 @@ type list struct {
 	Count int    `json:"count"`
 }
 
-func getListID(list string, userID int) (int, error) {
-	if list != "" {
-		var listID int
-		err := db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ?", list, userID).Scan(&listID)
-		switch {
-		case len(list) > 15:
-			return -1, nil
-		case err != nil:
-			if err == sql.ErrNoRows {
-				res, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)", list, userID)
-				if err != nil {
-					log.Println("Failed to add list:", err)
-					return 0, err
-				}
-				lastInsertID, err := res.LastInsertId()
-				if err != nil {
-					log.Println("Failed to get last insert id:", err)
-					return 0, err
-				}
-				return int(lastInsertID), nil
-			}
-			return 0, err
-		default:
-			return listID, nil
-		}
-	} else {
-		return 0, nil
+func checkList(listID, userID interface{}) bool {
+	var exist string
+	if err := db.QueryRow("SELECT list FROM list WHERE id = ? AND user_id = ?",
+		listID, userID).Scan(&exist); err == nil {
+		return true
 	}
+	return false
 }
 
 func getList(userID interface{}) ([]list, error) {

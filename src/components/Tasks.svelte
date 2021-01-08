@@ -4,8 +4,10 @@
   import { fire, post } from "../misc";
   import { current, loading, tasks } from "../stores";
   import type { Task } from "../stores";
+  import type { element } from "svelte/internal";
 
   let currentTasks: Task[] = [];
+  let selected: number;
 
   const getTasks = async () => {
     if (!$tasks.hasOwnProperty($current.list)) {
@@ -34,6 +36,7 @@
 
   const onUpdate = async (event: Sortable.SortableEvent) => {
     const resp = await post("/reorder", {
+      list: $current.id,
       old: currentTasks[event.oldIndex as number].id,
       new: currentTasks[event.newIndex as number].id,
     });
@@ -49,6 +52,26 @@
   };
   const add = () => {
     console.log("/task/add");
+  };
+  const edit = (event: KeyboardEvent, id: number) => {
+    console.log(event);
+    if (event.key == "Enter") event.preventDefault();
+    console.log(id);
+    console.log("/task/edit");
+  };
+
+  const handleClick = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains("task")) selected = 0;
+    else {
+      target.focus();
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      const sel = window.getSelection() as Selection;
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
   };
 </script>
 
@@ -75,17 +98,34 @@
     cursor: default;
   }
 
+  li > span {
+    outline: 0;
+  }
+
   .list-group-item:hover {
     box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
       0 1px 3px 1px rgba(60, 64, 67, 0.149);
     outline: 0;
     z-index: 2000;
   }
+
+  .selected {
+    cursor: text;
+    border-bottom-width: 1px;
+    border-color: #1a73e8;
+    background-color: #f8f9fa;
+  }
+
+  .selected:hover {
+    box-shadow: none;
+  }
 </style>
 
 <svelte:head>
   <title>{$current.list} - My Tasks</title>
 </svelte:head>
+
+<svelte:window on:click={handleClick} />
 
 <div style="height: 100%">
   <header style="padding-left: 20px">
@@ -99,7 +139,13 @@
   </header>
   <ul class="list-group list-group-flush" id="mytasks">
     {#each currentTasks as task (task.id)}
-      <li class="list-group-item">{task.task}</li>
+      <li class="list-group-item" class:selected={task.id === selected}>
+        <span
+          class="task"
+          contenteditable={task.id === selected}
+          on:click={() => (selected = task.id)}
+          on:keydown={(e) => edit(e, task.id)}>{task.task}</span>
+      </li>
     {/each}
   </ul>
 </div>
