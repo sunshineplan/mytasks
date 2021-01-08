@@ -72,8 +72,14 @@
 
   ul {
     height: calc(100% - 100px);
-    padding: 0 10px;
     cursor: default;
+  }
+
+  .list-group-item:hover {
+    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
+      0 1px 3px 1px rgba(60, 64, 67, 0.149);
+    outline: 0;
+    z-index: 2000;
   }
 </style>
 
