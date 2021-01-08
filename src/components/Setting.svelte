@@ -1,5 +1,5 @@
-<script  lang="ts">
-  import { BootstrapButtons, post, valid } from "../misc";
+<script lang="ts">
+  import { fire, post, valid } from "../misc";
   import { username, component } from "../stores";
 
   let password = "";
@@ -15,19 +15,18 @@
         password1,
         password2,
       });
-      if (!resp.ok)
-        await BootstrapButtons.fire("Error", await resp.text(), "error");
+      if (!resp.ok) await fire("Error", await resp.text(), "error");
       else {
         const json = await resp.json();
         if (json.status == 1) {
-          await BootstrapButtons.fire(
+          await fire(
             "Success",
             "Your password has changed. Please Re-login!",
             "success"
           );
           username.set("");
         } else {
-          await BootstrapButtons.fire("Error", json.message, "error");
+          await fire("Error", json.message, "error");
           if (json.error == 1) password = "";
           else {
             password1 = "";
@@ -41,15 +40,22 @@
   const cancel = () => {
     component.set("tasks");
   };
+
+  const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === "Escape") cancel();
+  };
+  const handleEnter = async (event: KeyboardEvent) => {
+    if (event.key === "Enter") await setting();
+  };
 </script>
 
 <svelte:head>
   <title>Setting - My Tasks</title>
 </svelte:head>
 
-<svelte:window on:keydown={cancel} />
+<svelte:window on:keydown={handleEscape} />
 
-<div on:keyup={setting}>
+<div on:keyup={handleEnter}>
   <header style="padding-left: 20px">
     <h3>Setting</h3>
     <hr />

@@ -3,15 +3,14 @@
   import Setting from "./components/Setting.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Tasks from "./components/Tasks.svelte";
-  import { post } from "./misc";
   import {
     username as user,
     current,
+    showSidebar,
     component,
-    tasks,
     loading,
-    List,
   } from "./stores";
+  import type { List } from "./stores";
 
   let lists: List[] = [];
 
@@ -33,6 +32,7 @@
   } as any;
 
   const setting = () => {
+    if (window.innerWidth <= 900) $showSidebar = false;
     component.set("setting");
   };
 </script>
@@ -86,7 +86,7 @@
 
   @media (max-width: 900px) {
     .brand {
-      padding-left: 10px;
+      padding-left: 90px;
     }
 
     .loading {
@@ -117,7 +117,8 @@
   {#await promise then _}
     <div
       class="content"
-      style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}">
+      style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
+      on:mousedown={() => ($showSidebar = false)}>
       <svelte:component this={components[$component]} />
     </div>
   {/await}

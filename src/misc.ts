@@ -1,9 +1,16 @@
 import Swal from 'sweetalert2'
 
-export const BootstrapButtons = Swal.mixin({
-  customClass: { confirmButton: 'swal btn btn-primary' },
-  buttonsStyling: false
-})
+export const fire = (
+  title?: string | undefined,
+  html?: string | undefined,
+  icon?: 'success' | 'error' | 'warning' | 'info' | 'question' | undefined
+) => {
+  const swal = Swal.mixin({
+    customClass: { confirmButton: 'swal btn btn-primary' },
+    buttonsStyling: false
+  })
+  return swal.fire(title, html, icon)
+}
 
 export const valid = () => {
   let result = true
@@ -21,10 +28,10 @@ export const post = async (url: string, data?: object) => {
       body: JSON.stringify(data)
     })
   } catch (e) {
-    return Promise.reject(await BootstrapButtons.fire('Error', e, 'error'))
+    return Promise.reject(await fire('Error', e, 'error'))
   }
   if (resp.status == 401) {
-    await BootstrapButtons.fire('Error', 'Login status has changed. Please Re-login!', 'error')
+    await fire('Error', 'Login status has changed. Please Re-login!', 'error')
     window.location.href = '/'
   }
   return resp

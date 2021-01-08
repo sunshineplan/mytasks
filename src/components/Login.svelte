@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { BootstrapButtons, post } from "../misc";
+  import { fire, post } from "../misc";
 
   const dispatch = createEventDispatcher();
 
@@ -14,31 +14,26 @@
         "#username"
       ) as HTMLSelectElement).checkValidity()
     )
-      await BootstrapButtons.fire(
-        "Error",
-        "Username cannot be empty.",
-        "error"
-      );
+      await fire("Error", "Username cannot be empty.", "error");
     else if (
       !(document.querySelector(
         "#password"
       ) as HTMLSelectElement).checkValidity()
     )
-      await BootstrapButtons.fire(
-        "Error",
-        "Password cannot be empty.",
-        "error"
-      );
+      await fire("Error", "Password cannot be empty.", "error");
     else {
       const resp = await post("/login", {
         username,
         password,
         rememberme,
       });
-      if (!resp.ok)
-        await BootstrapButtons.fire("Error", await resp.text(), "error");
+      if (!resp.ok) await fire("Error", await resp.text(), "error");
       else dispatch("info");
     }
+  };
+
+  const handleEnter = async (event: KeyboardEvent) => {
+    if (event.key === "Enter") await login();
   };
 </script>
 
@@ -53,7 +48,7 @@
   <title>Log In - My Tasks</title>
 </svelte:head>
 
-<div class="content">
+<div class="content" on:keyup={handleEnter}>
   <header>
     <h3
       class="d-flex justify-content-center align-items-center"

@@ -1,8 +1,9 @@
 <script lang="ts">
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
-  import { BootstrapButtons, post } from "../misc";
-  import { current, loading, tasks, Task } from "../stores";
+  import { fire, post } from "../misc";
+  import { current, loading, tasks } from "../stores";
+  import type { Task } from "../stores";
 
   let currentTasks: Task[] = [];
 
@@ -40,7 +41,7 @@
       const task = currentTasks[event.oldIndex as number];
       currentTasks.splice(event.oldIndex as number, 1);
       currentTasks.splice(event.newIndex as number, 0, task);
-    } else await BootstrapButtons.fire("Error", "Failed to reorder.", "error");
+    } else await fire("Error", "Failed to reorder.", "error");
   };
 
   const editList = () => {

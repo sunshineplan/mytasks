@@ -1,17 +1,19 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { List, current, component } from "../stores";
+  import { current, component, showSidebar } from "../stores";
+  import type { List } from "../stores";
 
   export let lists: List[];
 
   let hover = false;
-  let showSidebar = true;
+  let smallSize = window.innerWidth <= 900;
 
   const toggle = () => {
-    showSidebar = !showSidebar;
+    $showSidebar = !$showSidebar;
   };
 
   const goto = (list: List) => {
+    if (window.innerWidth <= 900) $showSidebar = false;
     $current = list;
     $component = "tasks";
   };
@@ -19,14 +21,20 @@
   const arrow = (event: KeyboardEvent) => {
     const len = lists.length;
     const index = lists.findIndex((list) => list.id === $current.id);
-    if ($current.id)
+    if ($current.id && $component === "tasks")
       if (event.key == "ArrowUp") {
         if (index > 0) goto(lists[index - 1]);
       } else if (event.key == "ArrowDown")
         if (index < len - 1) goto(lists[index + 1]);
   };
+
+  const checkSize = () => {
+    if (smallSize != window.innerWidth <= 900)
+      smallSize = window.innerWidth <= 900;
+  };
+
   const add = () => {
-    if (window.innerWidth <= 900) showSidebar = false;
+    if (window.innerWidth <= 900) $showSidebar = false;
     console.log("/list/add");
   };
 </script>
@@ -106,9 +114,9 @@
   }
 </style>
 
-<svelte:window on:keydown={arrow} />
+<svelte:window on:keydown={arrow} on:resize={checkSize} />
 
-{#if window.innerWidth <= 900}
+{#if smallSize}
   <span
     class="toggle"
     on:click={toggle}
@@ -123,16 +131,16 @@
 {/if}
 <nav
   class="nav flex-column navbar-light sidebar"
-  hidden={!showSidebar}
+  hidden={!$showSidebar && smallSize}
   transition:slide>
   <div class="list-menu">
-    <button class="btn btn-primary btn-sm" on:click={add}> Add List </button>
+    <button class="btn btn-primary btn-sm" on:click={add}>Add List</button>
     <ul class="navbar-nav">
       {#each lists as list (list.id)}
         <li>
           <span
             class="nav-link list"
-            class:active={$current.id === list.id}
+            class:active={$current.id === list.id && $component === 'tasks'}
             on:click={() => goto(list)}>
             {list.list}
             ({list.count})
