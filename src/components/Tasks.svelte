@@ -2,7 +2,7 @@
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
   import { fire, post } from "../misc";
-  import { current, loading, tasks } from "../stores";
+  import { current, loading, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
   let currentTasks: Task[] = [];
@@ -48,7 +48,15 @@
   };
 
   const editList = async (list: string) => {
-    console.log("/list/edit");
+    const index = $lists.findIndex((list) => list.id === $current.id);
+    if ($current.list != list) {
+      $lists[index].list = list;
+      delete Object.assign($tasks, { [list]: currentTasks })[$current.list];
+      const resp = await post("/list/edit/" + $current.id, { list });
+      const json = await resp.json();
+      if (!json.status)
+        fire("Error", json.message ? json.message : "Error", "error");
+    }
   };
   const add = () => {
     console.log("/task/add");
@@ -109,7 +117,6 @@
   };
   const handleWindowClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    console.log(target.id);
     if (!target.classList.contains("task")) {
       const id = selected;
       const selectedTarget = document.querySelector(".selected");

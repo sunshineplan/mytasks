@@ -1,9 +1,7 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { current, component, showSidebar } from "../stores";
+  import { current, component, showSidebar, lists } from "../stores";
   import type { List } from "../stores";
-
-  export let lists: List[];
 
   let hover = false;
   let smallSize = window.innerWidth <= 900;
@@ -19,13 +17,13 @@
   };
 
   const arrow = (event: KeyboardEvent) => {
-    const len = lists.length;
-    const index = lists.findIndex((list) => list.id === $current.id);
+    const len = $lists.length;
+    const index = $lists.findIndex((list) => list.id === $current.id);
     if ($current.id && $component === "tasks")
       if (event.key == "ArrowUp") {
-        if (index > 0) goto(lists[index - 1]);
+        if (index > 0) goto($lists[index - 1]);
       } else if (event.key == "ArrowDown")
-        if (index < len - 1) goto(lists[index + 1]);
+        if (index < len - 1) goto($lists[index + 1]);
   };
 
   const checkSize = () => {
@@ -136,7 +134,7 @@
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={add}>Add List</button>
     <ul class="navbar-nav">
-      {#each lists as list (list.id)}
+      {#each $lists as list (list.id)}
         <li>
           <span
             class="nav-link list"

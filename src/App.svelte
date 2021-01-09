@@ -9,20 +9,18 @@
     showSidebar,
     component,
     loading,
+    lists,
   } from "./stores";
-  import type { List } from "./stores";
-
-  let lists: List[] = [];
 
   const getInfo = async () => {
     const resp = await fetch("/info");
     const info = await resp.json();
     if (Object.keys(info).length) {
       $user = info.username;
-      lists = info.lists;
+      $lists = info.lists;
     } else return;
-    lists.sort((a, b) => a.seq - b.seq);
-    if (lists.length) if (!$current.id) $current = lists[0];
+    $lists.sort((a, b) => a.seq - b.seq);
+    if ($lists.length) if (!$current.id) $current = $lists[0];
   };
   const promise = getInfo();
 
@@ -113,7 +111,7 @@
 {#if !$user}
   <Login on:info={getInfo} />
 {:else}
-  <Sidebar bind:lists />
+  <Sidebar />
   {#await promise then _}
     <div
       class="content"
