@@ -39,7 +39,7 @@ func getTask(c *gin.Context) {
 		return
 	}
 
-	rows, err := db.Query("SELECT task_id, task, list FROM tasks WHERE list_id = ? AND user_id = ?",
+	rows, err := db.Query("SELECT task_id, task, list_id FROM tasks WHERE list_id = ? AND user_id = ?",
 		r.List, sessions.Default(c).Get("userID"))
 	if err != nil {
 		log.Println("Failed to get tasks:", err)

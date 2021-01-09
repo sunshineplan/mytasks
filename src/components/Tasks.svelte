@@ -4,7 +4,6 @@
   import { fire, post } from "../misc";
   import { current, loading, tasks } from "../stores";
   import type { Task } from "../stores";
-  import type { element } from "svelte/internal";
 
   let currentTasks: Task[] = [];
   let selected: number;
@@ -53,17 +52,28 @@
   const add = () => {
     console.log("/task/add");
   };
-  const edit = (event: KeyboardEvent, id: number) => {
-    console.log(event);
-    if (event.key == "Enter") event.preventDefault();
-    console.log(id);
-    console.log("/task/edit");
+  const edit = async (id: number, task: string) => {
+    const index = currentTasks.findIndex((task) => task.id === id);
+    if (currentTasks[index].task != task) {
+      currentTasks[index].task = task;
+      const resp = await post("/task/edit/" + id, { task, list: $current.id });
+      const json = await resp.json();
+      if (!json.status)
+        fire("Error", json.message ? json.message : "Error", "error");
+    }
   };
 
-  const handleClick = (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    if (!target.classList.contains("task")) selected = 0;
-    else {
+  const handleKeydown = (event: KeyboardEvent, id: number) => {
+    if (event.key == "Enter" || event.key == "Escape") {
+      event.preventDefault();
+      edit(id, (event.target as HTMLElement).innerText);
+      selected = 0;
+    }
+  };
+  const handleClick = (event: MouseEvent, id: number) => {
+    if (selected !== id) {
+      const target = event.target as HTMLElement;
+      target.setAttribute("contenteditable", "true");
       target.focus();
       const range = document.createRange();
       range.selectNodeContents(target);
@@ -71,6 +81,19 @@
       const sel = window.getSelection() as Selection;
       sel.removeAllRanges();
       sel.addRange(range);
+      const selectedTarget = document.querySelector(".selected");
+      if (selectedTarget)
+        edit(selected, (selectedTarget as HTMLElement).innerText);
+      selected = id;
+    }
+  };
+  const handleWindowClick = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains("task")) {
+      const id = selected;
+      const selectedTarget = document.querySelector(".selected");
+      if (selectedTarget) edit(id, (selectedTarget as HTMLElement).innerText);
+      selected = 0;
     }
   };
 </script>
@@ -113,7 +136,7 @@
     cursor: text;
     border-bottom-width: 1px;
     border-color: #1a73e8;
-    background-color: #f8f9fa;
+    background-color: #eaf5fd;
   }
 
   .selected:hover {
@@ -125,7 +148,7 @@
   <title>{$current.list} - My Tasks</title>
 </svelte:head>
 
-<svelte:window on:click={handleClick} />
+<svelte:window on:click={handleWindowClick} />
 
 <div style="height: 100%">
   <header style="padding-left: 20px">
@@ -143,8 +166,8 @@
         <span
           class="task"
           contenteditable={task.id === selected}
-          on:click={() => (selected = task.id)}
-          on:keydown={(e) => edit(e, task.id)}>{task.task}</span>
+          on:keydown={(e) => handleKeydown(e, task.id)}
+          on:click={(e) => handleClick(e, task.id)}>{task.task}</span>
       </li>
     {/each}
   </ul>

@@ -98,35 +98,18 @@ func editList(c *gin.Context) {
 		return
 	}
 
-	ec := make(chan error, 1)
 	var exist string
-	go func() {
-		ec <- db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ?",
-			list.Name, userID).Scan(&exist)
-	}()
-	var oldList string
-	if err := db.QueryRow("SELECT list FROM list WHERE id = ? AND user_id = ?",
-		id, userID).Scan(&oldList); err != nil {
-		log.Println("Failed to scan list:", err)
-		c.String(500, "")
-		return
-	}
-	err = <-ec
+	err = db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ? AND id != ?",
+		list.Name, userID, id).Scan(&exist)
 
 	var message string
-	var errorCode int
 	switch {
 	case list.Name == "":
 		message = "New list name is empty."
-		errorCode = 1
-	case oldList == list.Name:
-		message = "New list is same as old list."
 	case len(list.Name) > 15:
 		message = "List name exceeded length limit."
-		errorCode = 1
 	case err == nil:
 		message = fmt.Sprintf("List %s is already existed.", list.Name)
-		errorCode = 1
 	default:
 		if _, err := db.Exec("UPDATE list SET list = ? WHERE id = ? AND user_id = ?",
 			list.Name, id, userID); err != nil {
@@ -137,7 +120,7 @@ func editList(c *gin.Context) {
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
-	c.JSON(200, gin.H{"status": 0, "message": message, "error": errorCode})
+	c.JSON(200, gin.H{"status": 0, "message": message})
 }
 
 func deleteList(c *gin.Context) {
@@ -155,8 +138,7 @@ func deleteList(c *gin.Context) {
 		c.String(500, "")
 		return
 	}
-	if _, err := db.Exec("UPDATE task SET list_id = 0 WHERE list_id = ? and user_id = ?",
-		id, userID); err != nil {
+	if _, err := db.Exec("DELETE FROM task WHERE list_id = ?", id); err != nil {
 		log.Println("Failed to remove deleted list for task:", err)
 		c.String(500, "")
 		return
