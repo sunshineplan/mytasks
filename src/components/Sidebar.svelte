@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
+  import { fire, post } from "../misc";
   import { current, component, showSidebar, lists } from "../stores";
   import type { List } from "../stores";
 
@@ -16,14 +17,40 @@
     $component = "tasks";
   };
 
-  const arrow = (event: KeyboardEvent) => {
-    const len = $lists.length;
-    const index = $lists.findIndex((list) => list.id === $current.id);
-    if ($current.id && $component === "tasks")
-      if (event.key == "ArrowUp") {
-        if (index > 0) goto($lists[index - 1]);
-      } else if (event.key == "ArrowDown")
-        if (index < len - 1) goto($lists[index + 1]);
+  const handleKeydown = async (event: KeyboardEvent) => {
+    if (event.key == "ArrowUp" || event.key == "ArrowDown") {
+      const len = $lists.length;
+      const index = $lists.findIndex((list) => list.id === $current.id);
+      if ($current.id && $component === "tasks")
+        if (event.key == "ArrowUp") {
+          if (index > 0) goto($lists[index - 1]);
+        } else if (event.key == "ArrowDown")
+          if (index < len - 1) goto($lists[index + 1]);
+    } else if (event.key == "Enter" || event.key == "Escape") {
+      const newList = document.querySelector(".new");
+      if (newList) {
+        event.preventDefault();
+        const list = (newList.textContent as string).trim();
+        if (list) {
+          const id = await add(list);
+          if (id) {
+            newList.remove();
+            $lists = [...$lists, { id, list, count: 0 }];
+            goto({ id, list, count: 0 });
+          }
+        } else newList.remove();
+      }
+    }
+  };
+
+  const add = async (list: string) => {
+    const resp = await post("/list/add", { list });
+    const json = await resp.json();
+    if (json.status) return json.id as number;
+    else {
+      await fire("Error", json.message ? json.message : "Error", "error");
+      return 0;
+    }
   };
 
   const checkSize = () => {
@@ -31,9 +58,20 @@
       smallSize = window.innerWidth <= 900;
   };
 
-  const add = () => {
+  const addList = () => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    console.log("/list/add");
+    const ul = document.querySelector("ul.navbar-nav") as HTMLLIElement;
+    const li = document.createElement("li");
+    li.classList.add("nav-link", "new");
+    ul.appendChild(li);
+    li.setAttribute("contenteditable", "true");
+    li.focus();
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(false);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 </script>
 
@@ -112,7 +150,7 @@
   }
 </style>
 
-<svelte:window on:keydown={arrow} on:resize={checkSize} />
+<svelte:window on:keydown={handleKeydown} on:resize={checkSize} />
 
 {#if smallSize}
   <span
@@ -132,17 +170,15 @@
   hidden={!$showSidebar && smallSize}
   transition:slide>
   <div class="list-menu">
-    <button class="btn btn-primary btn-sm" on:click={add}>Add List</button>
+    <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav">
       {#each $lists as list (list.id)}
-        <li>
-          <span
-            class="nav-link list"
-            class:active={$current.id === list.id && $component === 'tasks'}
-            on:click={() => goto(list)}>
-            {list.list}
-            ({list.count})
-          </span>
+        <li
+          class="nav-link list"
+          class:active={$current.id === list.id && $component === 'tasks'}
+          on:click={() => goto(list)}>
+          {list.list}
+          ({list.count})
         </li>
       {/each}
     </ul>

@@ -26,6 +26,11 @@ header {
   width: 250px;
 }
 
+.new {
+  outline: 0;
+  background-color: #eaf5fd;
+}
+
 .swal {
   margin: 8px 6px;
 }

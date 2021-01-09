@@ -4,7 +4,7 @@ export interface List {
     id: number
     list: string
     count: number
-    seq: number
+    seq?: number
 }
 
 export interface Task {

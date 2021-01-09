@@ -65,13 +65,20 @@ func addList(c *gin.Context) {
 			message = fmt.Sprintf("List %s is already existed.", list.Name)
 		} else {
 			if err == sql.ErrNoRows {
-				if _, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)",
-					list.Name, userID); err != nil {
+				result, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)",
+					list.Name, userID)
+				if err != nil {
 					log.Println("Failed to add list:", err)
 					c.String(500, "")
 					return
 				}
-				c.JSON(200, gin.H{"status": 1})
+				id, err := result.LastInsertId()
+				if err != nil {
+					log.Println("Failed to get last insert id:", err)
+					c.String(500, "")
+					return
+				}
+				c.JSON(200, gin.H{"status": 1, "id": id})
 				return
 			}
 			log.Println("Failed to scan list:", err)
