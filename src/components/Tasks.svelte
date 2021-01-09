@@ -7,6 +7,7 @@
 
   let currentTasks: Task[] = [];
   let selected: number;
+  let editable = false;
 
   const getTasks = async () => {
     if (!$tasks.hasOwnProperty($current.list)) {
@@ -46,7 +47,7 @@
     } else await fire("Error", "Failed to reorder.", "error");
   };
 
-  const editList = () => {
+  const editList = async (list: string) => {
     console.log("/list/edit");
   };
   const add = () => {
@@ -63,14 +64,33 @@
     }
   };
 
-  const handleKeydown = (event: KeyboardEvent, id: number) => {
+  const listKeydown = (event: KeyboardEvent) => {
+    if (event.key == "Enter" || event.key == "Escape") {
+      event.preventDefault();
+      editList((event.target as HTMLElement).innerText);
+      editable = false;
+    }
+  };
+  const listClick = () => {
+    editable = true;
+    const target = document.querySelector("#list") as HTMLElement;
+    target.setAttribute("contenteditable", "true");
+    target.focus();
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    range.collapse(false);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+  const taskKeydown = (event: KeyboardEvent, id: number) => {
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
       edit(id, (event.target as HTMLElement).innerText);
       selected = 0;
     }
   };
-  const handleClick = (event: MouseEvent, id: number) => {
+  const taskClick = (event: MouseEvent, id: number) => {
     if (selected !== id) {
       const target = event.target as HTMLElement;
       target.setAttribute("contenteditable", "true");
@@ -89,11 +109,16 @@
   };
   const handleWindowClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
+    console.log(target.id);
     if (!target.classList.contains("task")) {
       const id = selected;
       const selectedTarget = document.querySelector(".selected");
       if (selectedTarget) edit(id, (selectedTarget as HTMLElement).innerText);
       selected = 0;
+    }
+    if (target.id != "list" && !target.classList.contains("edit")) {
+      editList((document.querySelector("#list") as HTMLElement).innerText);
+      editable = false;
     }
   };
 </script>
@@ -121,7 +146,8 @@
     cursor: default;
   }
 
-  li > span {
+  li > span,
+  #list {
     outline: 0;
   }
 
@@ -130,6 +156,10 @@
       0 1px 3px 1px rgba(60, 64, 67, 0.149);
     outline: 0;
     z-index: 2000;
+  }
+
+  .editable {
+    text-decoration: underline;
   }
 
   .selected {
@@ -153,8 +183,13 @@
 <div style="height: 100%">
   <header style="padding-left: 20px">
     <div style="height: 50px">
-      <span class="h3">{$current.list}</span>
-      <span class="btn icon" on:click={editList}>
+      <span
+        class="h3"
+        id="list"
+        class:editable
+        contenteditable={editable}
+        on:keydown={listKeydown}>{$current.list}</span>
+      <span class="btn icon" on:click={listClick} hidden={editable}>
         <i class="material-icons edit">edit</i>
       </span>
     </div>
@@ -166,8 +201,8 @@
         <span
           class="task"
           contenteditable={task.id === selected}
-          on:keydown={(e) => handleKeydown(e, task.id)}
-          on:click={(e) => handleClick(e, task.id)}>{task.task}</span>
+          on:keydown={(e) => taskKeydown(e, task.id)}
+          on:click={(e) => taskClick(e, task.id)}>{task.task}</span>
       </li>
     {/each}
   </ul>
