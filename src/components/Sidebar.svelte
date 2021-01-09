@@ -17,45 +17,18 @@
     $component = "tasks";
   };
 
-  const handleKeydown = async (event: KeyboardEvent) => {
-    if (event.key == "ArrowUp" || event.key == "ArrowDown") {
-      const len = $lists.length;
-      const index = $lists.findIndex((list) => list.id === $current.id);
-      if ($current.id && $component === "tasks")
-        if (event.key == "ArrowUp") {
-          if (index > 0) goto($lists[index - 1]);
-        } else if (event.key == "ArrowDown")
-          if (index < len - 1) goto($lists[index + 1]);
-    } else if (event.key == "Enter" || event.key == "Escape") {
-      const newList = document.querySelector(".new");
-      if (newList) {
-        event.preventDefault();
-        const list = (newList.textContent as string).trim();
-        if (list) {
-          const id = await add(list);
-          if (id) {
-            newList.remove();
-            $lists = [...$lists, { id, list, count: 0 }];
-            goto({ id, list, count: 0 });
-          }
-        } else newList.remove();
-      }
-    }
-  };
-
   const add = async (list: string) => {
     const resp = await post("/list/add", { list });
     const json = await resp.json();
-    if (json.status) return json.id as number;
-    else {
+    if (json.status) {
+      if (json.id) {
+        (document.querySelector(".new") as Element).remove();
+        $lists = [...$lists, { id: json.id, list, count: 0 }];
+        goto({ id: json.id, list, count: 0 });
+      }
+    } else {
       await fire("Error", json.message ? json.message : "Error", "error");
-      return 0;
     }
-  };
-
-  const checkSize = () => {
-    if (smallSize != window.innerWidth <= 900)
-      smallSize = window.innerWidth <= 900;
   };
 
   const addList = () => {
@@ -72,6 +45,41 @@
     const sel = window.getSelection() as Selection;
     sel.removeAllRanges();
     sel.addRange(range);
+  };
+
+  const checkSize = () => {
+    if (smallSize != window.innerWidth <= 900)
+      smallSize = window.innerWidth <= 900;
+  };
+  const handleKeydown = async (event: KeyboardEvent) => {
+    if (event.key == "ArrowUp" || event.key == "ArrowDown") {
+      const len = $lists.length;
+      const index = $lists.findIndex((list) => list.id === $current.id);
+      if ($current.id && $component === "tasks")
+        if (event.key == "ArrowUp") {
+          if (index > 0) goto($lists[index - 1]);
+        } else if (event.key == "ArrowDown")
+          if (index < len - 1) goto($lists[index + 1]);
+    } else if (event.key == "Enter" || event.key == "Escape") {
+      const newList = document.querySelector(".new");
+      if (newList) {
+        event.preventDefault();
+        const list = (newList.textContent as string).trim();
+        if (list) await add(list);
+        else newList.remove();
+      }
+    }
+  };
+  const handleClick = async (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains("new") && target.innerText !== "Add List") {
+      const newList = document.querySelector(".new");
+      if (newList) {
+        const list = (newList.textContent as string).trim();
+        if (list) await add(list);
+        else newList.remove();
+      }
+    }
   };
 </script>
 
@@ -150,7 +158,10 @@
   }
 </style>
 
-<svelte:window on:keydown={handleKeydown} on:resize={checkSize} />
+<svelte:window
+  on:keydown={handleKeydown}
+  on:resize={checkSize}
+  on:click={handleClick} />
 
 {#if smallSize}
   <span
