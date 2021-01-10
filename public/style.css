@@ -31,6 +31,24 @@ header {
   background-color: #eaf5fd;
 }
 
+li > span,
+#list {
+  outline: 0;
+  display: inline-block;
+  min-width: 1px;
+}
+
+.selected {
+  cursor: text;
+  border-bottom-width: 1px;
+  border-color: #1a73e8;
+  background-color: #eaf5fd;
+}
+
+.selected:hover {
+  box-shadow: none;
+}
+
 .swal {
   margin: 8px 6px;
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,7 @@ func addList(c *gin.Context) {
 		c.String(400, "")
 		return
 	}
+	list.Name = strings.TrimSpace(list.Name)
 
 	var message string
 	switch {
@@ -104,6 +106,7 @@ func editList(c *gin.Context) {
 		c.String(400, "")
 		return
 	}
+	list.Name = strings.TrimSpace(list.Name)
 
 	var exist string
 	err = db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ? AND id != ?",

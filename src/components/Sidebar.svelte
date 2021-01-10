@@ -18,7 +18,7 @@
   };
 
   const add = async (list: string) => {
-    const resp = await post("/list/add", { list });
+    const resp = await post("/list/add", { list: list.trim() });
     const json = await resp.json();
     if (json.status) {
       if (json.id) {

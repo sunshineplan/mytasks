@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -68,17 +69,20 @@ func addTask(c *gin.Context) {
 	}
 
 	if checkList(task.List, sessions.Default(c).Get("userID")) {
-		if task.Task == "" {
-			c.JSON(200, gin.H{"status": 0, "message": "Task is empty."})
-			return
-		}
-		if _, err := db.Exec("INSERT INTO task (task, list_id) VALUES (?, ?)",
-			task.Task, task.List); err != nil {
+		result, err := db.Exec("INSERT INTO task (task, list_id) VALUES (?, ?)",
+			strings.TrimSpace(task.Task), task.List)
+		if err != nil {
 			log.Println("Failed to add task:", err)
 			c.String(500, "")
 			return
 		}
-		c.JSON(200, gin.H{"status": 1})
+		id, err := result.LastInsertId()
+		if err != nil {
+			log.Println("Failed to get last insert id:", err)
+			c.String(500, "")
+			return
+		}
+		c.JSON(200, gin.H{"status": 1, "id": id})
 		return
 	}
 	c.String(403, "")
@@ -98,12 +102,8 @@ func editTask(c *gin.Context) {
 	}
 
 	if checkAll(id, task.List, sessions.Default(c).Get("userID")) {
-		if task.Task == "" {
-			c.JSON(200, gin.H{"status": 0, "message": "Task is empty."})
-			return
-		}
 		if _, err := db.Exec("UPDATE task SET task = ? WHERE id = ? AND list_id = ?",
-			task.Task, id, task.List); err != nil {
+			strings.TrimSpace(task.Task), id, task.List); err != nil {
 			log.Println("Failed to edit task:", err)
 			c.String(500, "")
 			return

@@ -19,7 +19,7 @@
       $user = info.username;
       $lists = info.lists;
     } else return;
-    $lists.sort((a, b) => a.seq - b.seq);
+    //$lists.sort((a, b) => a.seq - b.seq);
     if ($lists.length) if (!$current.id) $current = $lists[0];
   };
   const promise = getInfo();

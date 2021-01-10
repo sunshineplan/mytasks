@@ -52,24 +52,73 @@
     if ($current.list != list) {
       $lists[index].list = list;
       delete Object.assign($tasks, { [list]: currentTasks })[$current.list];
-      const resp = await post("/list/edit/" + $current.id, { list });
+      const resp = await post("/list/edit/" + $current.id, {
+        list: list.trim(),
+      });
       const json = await resp.json();
       if (!json.status)
         fire("Error", json.message ? json.message : "Error", "error");
     }
   };
-  const add = () => {
-    console.log("/task/add");
+  const add = async (task: string) => {
+    const resp = await post("/task/add", {
+      task: task.trim(),
+      list: $current.id,
+    });
+    const json = await resp.json();
+    if (json.status) {
+      if (json.id) {
+        const index = $lists.findIndex((list) => list.id === $current.id);
+        $lists[index].count++;
+        $tasks[$current.list] = [
+          { id: json.id, task, seq: currentTasks.length + 1 },
+          ...currentTasks,
+        ];
+        const selected = document.querySelector(".selected");
+        if (selected) selected.remove();
+        currentTasks = $tasks[$current.list];
+      }
+    } else {
+      await fire("Error", json.message ? json.message : "Error", "error");
+    }
   };
   const edit = async (id: number, task: string) => {
     const index = currentTasks.findIndex((task) => task.id === id);
     if (currentTasks[index].task != task) {
       currentTasks[index].task = task;
-      const resp = await post("/task/edit/" + id, { task, list: $current.id });
+      const resp = await post("/task/edit/" + id, {
+        task: task.trim(),
+        list: $current.id,
+      });
       const json = await resp.json();
       if (!json.status)
         fire("Error", json.message ? json.message : "Error", "error");
     }
+  };
+
+  const addTask = () => {
+    selected = 0;
+    const ul = document.querySelector("#mytasks") as HTMLLIElement;
+    const li = document.createElement("li");
+    li.classList.add("list-group-item", "selected");
+    const span = document.createElement("span");
+    span.classList.add("task");
+    li.appendChild(span);
+    li.addEventListener("keydown", (event) => {
+      if (event.key == "Enter" || event.key == "Escape") {
+        event.preventDefault();
+        add((event.target as HTMLElement).innerText);
+      }
+    });
+    ul.insertBefore(li, ul.childNodes[0]);
+    span.setAttribute("contenteditable", "true");
+    span.focus();
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    range.collapse(false);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 
   const listKeydown = (event: KeyboardEvent) => {
@@ -117,13 +166,15 @@
   };
   const handleWindowClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (!target.classList.contains("task")) {
+    if (!target.classList.contains("task") && target.innerText !== "Add Task") {
       const id = selected;
       const selectedTarget = document.querySelector(".selected");
-      if (selectedTarget) edit(id, (selectedTarget as HTMLElement).innerText);
+      if (selectedTarget)
+        if (id) edit(id, (selectedTarget as HTMLElement).innerText);
+        else add((selectedTarget as HTMLElement).innerText);
       selected = 0;
     }
-    if (target.id != "list" && !target.classList.contains("edit")) {
+    if (target.id != "list" && !target.classList.contains("edit") && editable) {
       editList((document.querySelector("#list") as HTMLElement).innerText);
       editable = false;
     }
@@ -153,11 +204,6 @@
     cursor: default;
   }
 
-  li > span,
-  #list {
-    outline: 0;
-  }
-
   .list-group-item:hover {
     box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
       0 1px 3px 1px rgba(60, 64, 67, 0.149);
@@ -167,17 +213,6 @@
 
   .editable {
     text-decoration: underline;
-  }
-
-  .selected {
-    cursor: text;
-    border-bottom-width: 1px;
-    border-color: #1a73e8;
-    background-color: #eaf5fd;
-  }
-
-  .selected:hover {
-    box-shadow: none;
   }
 </style>
 
@@ -200,7 +235,7 @@
         <i class="material-icons edit">edit</i>
       </span>
     </div>
-    <button class="btn btn-primary" on:click={add}>Add Task</button>
+    <button class="btn btn-primary" on:click={addTask}>Add Task</button>
   </header>
   <ul class="list-group list-group-flush" id="mytasks">
     {#each currentTasks as task (task.id)}
