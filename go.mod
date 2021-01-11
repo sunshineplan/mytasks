@@ -9,7 +9,7 @@ require (
 	github.com/go-mail/mail v2.3.1+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gorilla/sessions v1.2.1 // indirect
-	github.com/sunshineplan/utils v0.0.0-20210104070245-23a066730a67
+	github.com/sunshineplan/utils v0.0.0-20210111131232-637d6e8fc29c
 	github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect

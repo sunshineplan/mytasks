@@ -10,13 +10,14 @@ export interface List {
 export interface Task {
     id: number
     task: string
-    seq: number
+    seq?: number
+    created?: string
 }
 
 export const username = writable('')
 export const component = writable('tasks')
 export const current = writable({ id: 0 } as List)
 export const lists = writable([] as List[])
-export const tasks = writable({} as { [ListName: string]: Task[] })
+export const tasks = writable({} as { [ListName: string]: { tasks: Task[], completeds: Task[] } })
 export const showSidebar = writable(false)
 export const loading = writable(0)

@@ -4,15 +4,17 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
 type task struct {
-	ID   int    `json:"id"`
-	Task string `json:"task"`
-	List int    `json:"list"`
+	ID      int       `json:"id"`
+	Task    string    `json:"task"`
+	List    int       `json:"list"`
+	Created time.Time `json:"created"`
 }
 
 func checkTask(taskID, userID interface{}) bool {
@@ -39,26 +41,55 @@ func getTask(c *gin.Context) {
 		c.String(400, "")
 		return
 	}
+	userID := sessions.Default(c).Get("userID")
+	tasks := []task{}
+	completeds := []task{}
 
-	rows, err := db.Query("SELECT task_id, task, list_id FROM tasks WHERE list_id = ? AND user_id = ?",
-		r.List, sessions.Default(c).Get("userID"))
+	ec := make(chan error, 1)
+	go func() {
+		rows, err := db.Query(
+			"SELECT task_id, task, list_id, created FROM tasks WHERE list_id = ? AND user_id = ?",
+			r.List, userID)
+		if err != nil {
+			ec <- err
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var task task
+			if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
+				ec <- err
+				return
+			}
+			tasks = append(tasks, task)
+		}
+		ec <- nil
+	}()
+	rows, err := db.Query(
+		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ?",
+		r.List, userID)
 	if err != nil {
-		log.Println("Failed to get tasks:", err)
+		log.Println("Failed to get completeds:", err)
 		c.String(500, "")
 		return
 	}
 	defer rows.Close()
-	tasks := []task{}
 	for rows.Next() {
 		var task task
-		if err := rows.Scan(&task.ID, &task.Task, &task.List); err != nil {
-			log.Println("Failed to scan tasks:", err)
+		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
+			log.Println("Failed to scan completeds:", err)
 			c.String(500, "")
 			return
 		}
-		tasks = append(tasks, task)
+		completeds = append(completeds, task)
 	}
-	c.JSON(200, tasks)
+	if err := <-ec; err != nil {
+		log.Println("Failed to get tasks:", err)
+		c.String(500, "")
+		return
+	}
+
+	c.JSON(200, gin.H{"tasks": tasks, "completeds": completeds})
 }
 
 func addTask(c *gin.Context) {
@@ -109,6 +140,62 @@ func editTask(c *gin.Context) {
 			return
 		}
 		c.JSON(200, gin.H{"status": 1})
+		return
+	}
+	c.String(403, "")
+}
+
+func completeTask(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		log.Println("Failed to get id param:", err)
+		c.String(400, "")
+		return
+	}
+
+	if checkTask(id, sessions.Default(c).Get("userID")) {
+		result, err := db.Exec("CALL complete_task(?)", id)
+		if err != nil {
+			log.Println("Failed to complete task:", err)
+			c.String(500, "")
+			return
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			log.Println("Failed to get last insert id:", err)
+			c.String(500, "")
+			return
+		}
+		c.JSON(200, gin.H{"status": 1, "id": id})
+		return
+	}
+	c.String(403, "")
+}
+
+func uncompleteTask(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		log.Println("Failed to get id param:", err)
+		c.String(400, "")
+		return
+	}
+
+	var exist string
+	if err := db.QueryRow("SELECT task FROM completes WHERE task_id = ? AND user_id = ?",
+		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
+		result, err := db.Exec("CALL uncomplete_task(?)", id)
+		if err != nil {
+			log.Println("Failed to uncomplete task:", err)
+			c.String(500, "")
+			return
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			log.Println("Failed to get last insert id:", err)
+			c.String(500, "")
+			return
+		}
+		c.JSON(200, gin.H{"status": 1, "id": id})
 		return
 	}
 	c.String(403, "")

@@ -6,6 +6,7 @@
   import type { Task } from "../stores";
 
   let currentTasks: Task[] = [];
+  let currentCompleteds: Task[] = [];
   let selected: number;
   let editable = false;
 
@@ -16,7 +17,8 @@
       $tasks[$current.list] = await resp.json();
       $loading--;
     }
-    currentTasks = $tasks[$current.list];
+    currentTasks = $tasks[$current.list].tasks;
+    currentCompleteds = $tasks[$current.list].completeds;
   };
 
   $: $current && getTasks();
@@ -75,13 +77,13 @@
         if (json.id) {
           const index = $lists.findIndex((list) => list.id === $current.id);
           $lists[index].count++;
-          $tasks[$current.list] = [
+          $tasks[$current.list].tasks = [
             { id: json.id, task, seq: currentTasks.length + 1 },
             ...currentTasks,
           ];
           const selected = document.querySelector(".selected");
           if (selected) selected.remove();
-          currentTasks = $tasks[$current.list];
+          currentTasks = $tasks[$current.list].tasks;
         }
       } else {
         await fire("Error", json.message ? json.message : "Error", "error");

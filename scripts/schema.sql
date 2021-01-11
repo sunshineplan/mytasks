@@ -10,7 +10,6 @@ CREATE TABLE user (
 CREATE TABLE list (
   id INT PRIMARY KEY AUTO_INCREMENT,
   list VARCHAR(15) NOT NULL,
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   user_id INT NOT NULL
 );
 
@@ -35,10 +34,15 @@ CREATE TABLE seq (
 );
 
 CREATE VIEW tasks AS
-  SELECT user_id, task.id task_id, task, task.list_id, list, seq
+  SELECT user_id, task.id task_id, task, task.list_id, list, created, seq
   FROM task LEFT JOIN list ON task.list_id = list.id
   LEFT JOIN seq ON task.list_id = seq.list_id AND task.id = seq.task_id
   ORDER BY seq DESC;
+
+CREATE VIEW completeds AS
+  SELECT user_id, completed.id task_id, task, completed.list_id, list, created
+  FROM completed LEFT JOIN list ON completed.list_id = list.id
+  ORDER BY created DESC;
 
 CREATE VIEW lists AS
   SELECT list.id, list.user_id, list, COUNT(task) count
@@ -46,11 +50,19 @@ CREATE VIEW lists AS
   GROUP BY list ORDER BY list;
 
 DELIMITER ;;
-CREATE PROCEDURE completed_task(id INT)
+CREATE PROCEDURE complete_task(id INT)
 BEGIN
     START TRANSACTION;
     INSERT INTO completed (task, list_id) SELECT task, list_id FROM task WHERE id = id;
     DELETE FROM task WHERE id = id;
+    COMMIT;
+END;;
+
+CREATE PROCEDURE uncomplete_task(id INT)
+BEGIN
+    START TRANSACTION;
+    INSERT INTO task (task, list_id) SELECT task, list_id FROM completed WHERE id = id;
+    DELETE FROM completed WHERE id = id;
     COMMIT;
 END;;
 
