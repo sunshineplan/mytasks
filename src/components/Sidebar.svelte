@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { slide } from "svelte/transition";
   import { fire, post } from "../misc";
-  import { current, component, showSidebar, lists } from "../stores";
+  import { current, component, showSidebar, loading, lists } from "../stores";
   import type { List } from "../stores";
 
   let hover = false;
@@ -18,8 +17,10 @@
   };
 
   const add = async (list: string) => {
+    $loading++;
     const resp = await post("/list/add", { list: list.trim() });
     const json = await resp.json();
+    $loading--;
     if (json.status) {
       if (json.id) {
         (document.querySelector(".new") as Element).remove();
@@ -178,8 +179,7 @@
 {/if}
 <nav
   class="nav flex-column navbar-light sidebar"
-  hidden={!$showSidebar && smallSize}
-  transition:slide>
+  hidden={!$showSidebar && smallSize}>
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav">

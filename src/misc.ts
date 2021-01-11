@@ -12,6 +12,23 @@ export const fire = (
   return swal.fire(title, html, icon)
 }
 
+export const confirm = async (type: string) => {
+  const confirm = await Swal.fire({
+    title: 'Are you sure?',
+    text: 'This ' + type + ' will be deleted permanently.',
+    icon: 'warning',
+    confirmButtonText: 'Delete',
+    showCancelButton: true,
+    focusCancel: true,
+    customClass: {
+      confirmButton: 'swal btn btn-danger',
+      cancelButton: 'swal btn btn-primary'
+    },
+    buttonsStyling: false
+  })
+  return confirm.isConfirmed
+}
+
 export const valid = () => {
   let result = true
   Array.from(document.querySelectorAll('input'))
