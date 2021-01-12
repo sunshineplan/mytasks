@@ -188,8 +188,7 @@
           class="nav-link list"
           class:active={$current.id === list.id && $component === 'tasks'}
           on:click={() => goto(list)}>
-          {list.list}
-          ({list.count})
+          {list.list} ({list.count})
         </li>
       {/each}
     </ul>

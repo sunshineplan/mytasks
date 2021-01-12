@@ -154,25 +154,19 @@ func completeTask(c *gin.Context) {
 	}
 
 	if checkTask(id, sessions.Default(c).Get("userID")) {
-		result, err := db.Exec("CALL complete_task(?)", id)
-		if err != nil {
+		var insertID int
+		if err := db.QueryRow("CALL complete_task(?)", id).Scan(&insertID); err != nil {
 			log.Println("Failed to complete task:", err)
 			c.String(500, "")
 			return
 		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			log.Println("Failed to get last insert id:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1, "id": id})
+		c.JSON(200, gin.H{"status": 1, "id": insertID})
 		return
 	}
 	c.String(403, "")
 }
 
-func uncompleteTask(c *gin.Context) {
+func incompleteTask(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Println("Failed to get id param:", err)
@@ -183,19 +177,13 @@ func uncompleteTask(c *gin.Context) {
 	var exist string
 	if err := db.QueryRow("SELECT task FROM completes WHERE task_id = ? AND user_id = ?",
 		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
-		result, err := db.Exec("CALL uncomplete_task(?)", id)
-		if err != nil {
-			log.Println("Failed to uncomplete task:", err)
+		var insertID int
+		if err := db.QueryRow("CALL incomplete_task(?)", id).Scan(&insertID); err != nil {
+			log.Println("Failed to incomplete task:", err)
 			c.String(500, "")
 			return
 		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			log.Println("Failed to get last insert id:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1, "id": id})
+		c.JSON(200, gin.H{"status": 1, "id": insertID})
 		return
 	}
 	c.String(403, "")

@@ -50,20 +50,22 @@ CREATE VIEW lists AS
   GROUP BY list ORDER BY list;
 
 DELIMITER ;;
-CREATE PROCEDURE complete_task(id INT)
+CREATE PROCEDURE complete_task(task_id INT)
 BEGIN
     START TRANSACTION;
-    INSERT INTO completed (task, list_id) SELECT task, list_id FROM task WHERE id = id;
-    DELETE FROM task WHERE id = id;
+    INSERT INTO completed (task, list_id) SELECT task, list_id FROM task WHERE id = task_id;
+    DELETE FROM task WHERE id = task_id;
     COMMIT;
+    SELECT LAST_INSERT_ID();
 END;;
 
-CREATE PROCEDURE uncomplete_task(id INT)
+CREATE PROCEDURE incomplete_task(task_id INT)
 BEGIN
     START TRANSACTION;
-    INSERT INTO task (task, list_id) SELECT task, list_id FROM completed WHERE id = id;
-    DELETE FROM completed WHERE id = id;
+    INSERT INTO task (task, list_id) SELECT task, list_id FROM completed WHERE id = task_id;
+    DELETE FROM completed WHERE id = task_id;
     COMMIT;
+    SELECT LAST_INSERT_ID();
 END;;
 
 CREATE TRIGGER add_user AFTER INSERT ON user

@@ -9,8 +9,10 @@
   let currentCompleteds: Task[] = [];
   let selected: number;
   let editable = false;
+  let showCompleted = false;
 
   const getTasks = async () => {
+    showCompleted = false;
     if (!$tasks.hasOwnProperty($current.list)) {
       $loading++;
       const resp = await post("/task/get", { list: $current.id });
@@ -25,7 +27,7 @@
 
   onMount(() => {
     const sortable = new Sortable(
-      document.querySelector("#mytasks") as HTMLElement,
+      document.querySelector("#tasks") as HTMLElement,
       {
         animation: 150,
         delay: 100,
@@ -109,9 +111,12 @@
     }
   };
 
-  const addTask = () => {
+  const addTask = async () => {
+    const selectedTarget = document.querySelector(".selected");
+    if (!selected && selectedTarget)
+      await add((selectedTarget as HTMLElement).innerText);
     selected = 0;
-    const ul = document.querySelector("#mytasks") as HTMLLIElement;
+    const ul = document.querySelector("#tasks") as HTMLLIElement;
     const li = document.createElement("li");
     li.classList.add("list-group-item", "selected");
     const span = document.createElement("span");
@@ -132,6 +137,32 @@
     const sel = window.getSelection() as Selection;
     sel.removeAllRanges();
     sel.addRange(range);
+  };
+  const completeTask = async (id: number) => {
+    $loading++;
+    const resp = await post("/task/complete/" + id);
+    const json = await resp.json();
+    $loading--;
+    if (json.status) {
+      if (json.id) {
+        let index = $lists.findIndex((list) => list.id === $current.id);
+        $lists[index].count--;
+        $lists = $lists;
+        index = currentTasks.findIndex((task) => task.id === id);
+        currentCompleteds = [
+          {
+            id: json.id,
+            task: currentTasks[index].task,
+            seq: currentTasks.length + 1,
+          },
+          ...currentCompleteds,
+        ];
+        currentTasks.splice(index, 1);
+        currentTasks = currentTasks;
+      }
+    } else {
+      await fire("Error", "Error", "error");
+    }
   };
   const delTask = async (id: number) => {
     if (await confirm("task")) {
@@ -253,8 +284,12 @@
   }
 
   ul {
-    height: calc(100% - 100px);
     cursor: default;
+    overflow-y: auto;
+  }
+
+  .list-group-item {
+    padding: 0;
   }
 
   .list-group-item:hover {
@@ -262,6 +297,42 @@
       0 1px 3px 1px rgba(60, 64, 67, 0.149);
     outline: 0;
     z-index: 2000;
+  }
+
+  .check {
+    font-family: "Material Icons";
+    font-style: normal;
+    font-size: 1.5rem;
+    float: left;
+    padding: 12px;
+    line-height: normal;
+    color: #5f6368;
+  }
+
+  .check:before {
+    content: "radio_button_unchecked";
+  }
+
+  .check:hover:before {
+    content: "done";
+  }
+
+  .completeds {
+    padding: 15px 20px;
+    margin-top: 16px;
+    font-weight: 500;
+    color: #5f6368;
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.125);
+  }
+
+  .task {
+    padding: 0.75rem 0;
+  }
+
+  .completed {
+    padding: 0.75rem 1.25rem;
+    text-decoration: line-through;
   }
 
   .editable {
@@ -292,7 +363,10 @@
     </div>
     <button class="btn btn-primary" on:click={addTask}>Add Task</button>
   </header>
-  <ul class="list-group list-group-flush" id="mytasks">
+  <ul
+    class="list-group list-group-flush"
+    style={showCompleted ? 'height:calc(50% - 85px)' : 'height:calc(100% - 170px)'}
+    id="tasks">
     {#each currentTasks as task (task.id)}
       <li class="list-group-item" class:selected={task.id === selected}>
         <span
@@ -300,6 +374,7 @@
           contenteditable={task.id === selected}
           on:keydown={async (e) => await taskKeydown(e, task.id)}
           on:click={async (e) => await taskClick(e, task.id)}>{task.task}</span>
+        <i class="check" on:click={async () => await completeTask(task.id)} />
         {#if task.id === selected}
           <span
             class="icon"
@@ -310,4 +385,21 @@
       </li>
     {/each}
   </ul>
+  <div style="height: 100%">
+    <div class="completeds" on:click={() => (showCompleted = !showCompleted)}>
+      Completed ({currentCompleteds.length})
+    </div>
+    <ul
+      class="list-group list-group-flush"
+      id="completeds"
+      style={showCompleted ? 'height:calc(50% - 85px)' : ''}>
+      {#if showCompleted}
+        {#each currentCompleteds as task (task.id)}
+          <li class="list-group-item">
+            <span class="completed">{task.task}</span>
+          </li>
+        {/each}
+      {/if}
+    </ul>
+  </div>
 </div>

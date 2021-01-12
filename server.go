@@ -54,6 +54,8 @@ func run() {
 	base.POST("/task/get", getTask)
 	base.POST("/task/add", addTask)
 	base.POST("/task/edit/:id", editTask)
+	base.POST("/task/complete/:id", completeTask)
+	base.POST("/task/incomplete/:id", incompleteTask)
 	base.POST("/task/delete/:id", deleteTask)
 	base.POST("/list/add", addList)
 	base.POST("/list/edit/:id", editList)
