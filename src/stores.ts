@@ -10,7 +10,6 @@ export interface List {
 export interface Task {
     id: number
     task: string
-    seq?: number
     created?: string
 }
 

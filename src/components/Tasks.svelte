@@ -80,7 +80,7 @@
           const index = $lists.findIndex((list) => list.id === $current.id);
           $lists[index].count++;
           $tasks[$current.list].tasks = [
-            { id: json.id, task, seq: currentTasks.length + 1 },
+            { id: json.id, task },
             ...currentTasks,
           ];
           const selected = document.querySelector(".selected");
@@ -153,16 +153,40 @@
           {
             id: json.id,
             task: currentTasks[index].task,
-            seq: currentTasks.length + 1,
           },
           ...currentCompleteds,
         ];
         currentTasks.splice(index, 1);
         currentTasks = currentTasks;
+        return;
       }
-    } else {
-      await fire("Error", "Error", "error");
     }
+    await fire("Error", "Error", "error");
+  };
+  const incompleteTask = async (id: number) => {
+    $loading++;
+    const resp = await post("/task/incomplete/" + id);
+    const json = await resp.json();
+    $loading--;
+    if (json.status) {
+      if (json.id) {
+        let index = $lists.findIndex((list) => list.id === $current.id);
+        $lists[index].count++;
+        $lists = $lists;
+        index = currentCompleteds.findIndex((task) => task.id === id);
+        currentTasks = [
+          {
+            id: json.id,
+            task: currentCompleteds[index].task,
+          },
+          ...currentTasks,
+        ];
+        currentCompleteds.splice(index, 1);
+        currentCompleteds = currentCompleteds;
+        return;
+      }
+    }
+    await fire("Error", "Error", "error");
   };
   const delTask = async (id: number) => {
     if (await confirm("task")) {
@@ -236,12 +260,9 @@
       const sel = window.getSelection() as Selection;
       sel.removeAllRanges();
       sel.addRange(range);
-      const selectedTarget = document.querySelector(".selected");
+      const selectedTarget = document.querySelector(".selected>span");
       if (selectedTarget)
-        await edit(
-          selected,
-          (selectedTarget.firstChild as HTMLElement).innerText
-        );
+        await edit(selected, (selectedTarget as HTMLElement).innerText);
       selected = id;
     }
   };
@@ -252,7 +273,10 @@
       const selectedTarget = document.querySelector(".selected");
       if (selectedTarget)
         if (id)
-          await edit(id, (selectedTarget.firstChild as HTMLElement).innerText);
+          await edit(
+            id,
+            (selectedTarget.querySelector("span") as HTMLElement).innerText
+          );
         else await add((selectedTarget as HTMLElement).innerText);
       selected = 0;
     }
@@ -288,6 +312,10 @@
     overflow-y: auto;
   }
 
+  li {
+    display: inline-flex;
+  }
+
   .list-group-item {
     padding: 0;
   }
@@ -299,22 +327,30 @@
     z-index: 2000;
   }
 
-  .check {
+  .check,
+  .uncheck,
+  .operation {
     font-family: "Material Icons";
     font-style: normal;
     font-size: 1.5rem;
-    float: left;
     padding: 12px;
     line-height: normal;
     color: #5f6368;
+    cursor: pointer;
   }
 
   .check:before {
     content: "radio_button_unchecked";
   }
 
-  .check:hover:before {
+  .check:hover:before,
+  .uncheck {
     content: "done";
+    color: #468dff;
+  }
+
+  .delete:hover {
+    color: #d93025;
   }
 
   .completeds {
@@ -326,12 +362,20 @@
     background-color: rgba(0, 0, 0, 0.125);
   }
 
-  .task {
+  .expand {
+    font-family: "Material Icons";
+    font-style: normal;
+    font-size: 1.5rem;
+    float: right;
+    line-height: normal;
+  }
+
+  .task,
+  .completed {
     padding: 0.75rem 0;
   }
 
   .completed {
-    padding: 0.75rem 1.25rem;
     text-decoration: line-through;
   }
 
@@ -369,37 +413,39 @@
     id="tasks">
     {#each currentTasks as task (task.id)}
       <li class="list-group-item" class:selected={task.id === selected}>
+        <i class="check" on:click={async () => await completeTask(task.id)} />
         <span
           class="task"
           contenteditable={task.id === selected}
           on:keydown={async (e) => await taskKeydown(e, task.id)}
           on:click={async (e) => await taskClick(e, task.id)}>{task.task}</span>
-        <i class="check" on:click={async () => await completeTask(task.id)} />
-        {#if task.id === selected}
-          <span
-            class="icon"
-            style="float:right"
-            on:click={async () => await delTask(task.id)}>
-            <i class="material-icons edit">delete</i></span>
-        {/if}
+        <i
+          style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
+          class="operation delete"
+          on:click={async () => await delTask(task.id)}>delete</i>
       </li>
     {/each}
   </ul>
   <div style="height: 100%">
     <div class="completeds" on:click={() => (showCompleted = !showCompleted)}>
-      Completed ({currentCompleteds.length})
+      <span>Completed ({currentCompleteds.length})</span>
+      <i class="expand">{showCompleted ? 'expand_more' : 'expand_less'}</i>
+      {#if showCompleted}<i class="expand delete">delete</i>{/if}
     </div>
-    <ul
-      class="list-group list-group-flush"
-      id="completeds"
-      style={showCompleted ? 'height:calc(50% - 85px)' : ''}>
-      {#if showCompleted}
+    {#if showCompleted}
+      <ul
+        class="list-group list-group-flush"
+        id="completeds"
+        style="height:calc(50% - 85px)">
         {#each currentCompleteds as task (task.id)}
           <li class="list-group-item">
+            <i
+              class="uncheck"
+              on:click={async () => await incompleteTask(task.id)}>done</i>
             <span class="completed">{task.task}</span>
           </li>
         {/each}
-      {/if}
-    </ul>
+      </ul>
+    {/if}
   </div>
 </div>

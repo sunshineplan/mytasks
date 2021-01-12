@@ -57,10 +57,6 @@ button+button {
   margin-left: 0.3em;
 }
 
-.delete {
-  margin-top: 8px;
-}
-
 .sortable-ghost {
   opacity: 0;
 }

@@ -175,7 +175,7 @@ func incompleteTask(c *gin.Context) {
 	}
 
 	var exist string
-	if err := db.QueryRow("SELECT task FROM completes WHERE task_id = ? AND user_id = ?",
+	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
 		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
 		var insertID int
 		if err := db.QueryRow("CALL incomplete_task(?)", id).Scan(&insertID); err != nil {
