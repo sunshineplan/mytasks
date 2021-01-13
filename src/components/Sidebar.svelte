@@ -13,7 +13,7 @@
   const goto = (list: List) => {
     if (window.innerWidth <= 900) $showSidebar = false;
     $current = list;
-    $component = "tasks";
+    $component = "show";
   };
 
   const add = async (list: string) => {
@@ -56,7 +56,7 @@
     if (event.key == "ArrowUp" || event.key == "ArrowDown") {
       const len = $lists.length;
       const index = $lists.findIndex((list) => list.id === $current.id);
-      if ($current.id && $component === "tasks")
+      if ($current.id && $component === "show")
         if (event.key == "ArrowUp") {
           if (index > 0) goto($lists[index - 1]);
         } else if (event.key == "ArrowDown")
@@ -186,7 +186,7 @@
       {#each $lists as list (list.id)}
         <li
           class="nav-link list"
-          class:active={$current.id === list.id && $component === 'tasks'}
+          class:active={$current.id === list.id && $component === 'show'}
           on:click={() => goto(list)}>
           {list.list} ({list.count})
         </li>

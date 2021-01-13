@@ -42,8 +42,8 @@ func getTask(c *gin.Context) {
 		return
 	}
 	userID := sessions.Default(c).Get("userID")
-	tasks := []task{}
-	completeds := []task{}
+	incomplete := []task{}
+	completed := []task{}
 
 	ec := make(chan error, 1)
 	go func() {
@@ -61,7 +61,7 @@ func getTask(c *gin.Context) {
 				ec <- err
 				return
 			}
-			tasks = append(tasks, task)
+			incomplete = append(incomplete, task)
 		}
 		ec <- nil
 	}()
@@ -81,7 +81,7 @@ func getTask(c *gin.Context) {
 			c.String(500, "")
 			return
 		}
-		completeds = append(completeds, task)
+		completed = append(completed, task)
 	}
 	if err := <-ec; err != nil {
 		log.Println("Failed to get tasks:", err)
@@ -89,7 +89,7 @@ func getTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"tasks": tasks, "completeds": completeds})
+	c.JSON(200, gin.H{"incomplete": incomplete, "completed": completed})
 }
 
 func addTask(c *gin.Context) {

@@ -2,7 +2,7 @@
   import Login from "./components/Login.svelte";
   import Setting from "./components/Setting.svelte";
   import Sidebar from "./components/Sidebar.svelte";
-  import Tasks from "./components/Tasks.svelte";
+  import Show from "./components/Show.svelte";
   import {
     username as user,
     current,
@@ -26,12 +26,12 @@
 
   const components = {
     setting: Setting,
-    tasks: Tasks,
-  } as any;
+    show: Show,
+  } as { [component: string]: any };
 
   const setting = () => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    component.set("setting");
+    $component = "setting";
   };
 </script>
 

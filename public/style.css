@@ -70,7 +70,7 @@ li>span, #list {
   padding: 0;
 }
 
-.task, .completed {
+.task {
   padding: 0.75rem 0;
   width: calc(100% - 176px);
 }
