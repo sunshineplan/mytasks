@@ -10,7 +10,7 @@ export interface List {
 export interface Task {
     id: number
     task: string
-    created?: string
+    created: string
 }
 
 export const username = writable('')

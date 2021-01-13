@@ -12,10 +12,10 @@ export const fire = (
   return swal.fire(title, html, icon)
 }
 
-export const confirm = async (type: string) => {
+export const confirm = async (content: string) => {
   const confirm = await Swal.fire({
     title: 'Are you sure?',
-    text: 'This ' + type + ' will be deleted permanently.',
+    text: content + ' will be deleted permanently.',
     icon: 'warning',
     confirmButtonText: 'Delete',
     showCancelButton: true,

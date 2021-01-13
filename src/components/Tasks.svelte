@@ -80,12 +80,12 @@
           const index = $lists.findIndex((list) => list.id === $current.id);
           $lists[index].count++;
           $tasks[$current.list].tasks = [
-            { id: json.id, task },
+            { id: json.id, task, created: new Date().toLocaleString() },
             ...currentTasks,
           ];
+          currentTasks = $tasks[$current.list].tasks;
           const selected = document.querySelector(".selected");
           if (selected) selected.remove();
-          currentTasks = $tasks[$current.list].tasks;
         }
       } else {
         await fire("Error", json.message ? json.message : "Error", "error");
@@ -112,7 +112,7 @@
   };
 
   const addTask = async () => {
-    const selectedTarget = document.querySelector(".selected");
+    const selectedTarget = document.querySelector(".selected>.task");
     if (!selected && selectedTarget)
       await add((selectedTarget as HTMLElement).innerText);
     selected = 0;
@@ -121,6 +121,7 @@
     li.classList.add("list-group-item", "selected");
     const span = document.createElement("span");
     span.classList.add("task");
+    span.style.paddingLeft = "48px";
     li.appendChild(span);
     li.addEventListener("keydown", async (event) => {
       if (event.key == "Enter" || event.key == "Escape") {
@@ -149,13 +150,15 @@
         $lists[index].count--;
         $lists = $lists;
         index = currentTasks.findIndex((task) => task.id === id);
-        currentCompleteds = [
+        $tasks[$current.list].completeds = [
           {
             id: json.id,
             task: currentTasks[index].task,
+            created: new Date().toLocaleString(),
           },
           ...currentCompleteds,
         ];
+        currentCompleteds = $tasks[$current.list].completeds;
         currentTasks.splice(index, 1);
         currentTasks = currentTasks;
         return;
@@ -174,13 +177,15 @@
         $lists[index].count++;
         $lists = $lists;
         index = currentCompleteds.findIndex((task) => task.id === id);
-        currentTasks = [
+        $tasks[$current.list].tasks = [
           {
             id: json.id,
             task: currentCompleteds[index].task,
+            created: new Date().toLocaleString(),
           },
           ...currentTasks,
         ];
+        currentTasks = $tasks[$current.list].tasks;
         currentCompleteds.splice(index, 1);
         currentCompleteds = currentCompleteds;
         return;
@@ -188,8 +193,18 @@
     }
     await fire("Error", "Error", "error");
   };
+  const emptyCompleted = async () => {
+    if (await confirm("These completed tasks")) {
+      $loading++;
+      const resp = await post("/task/empty/" + $current.id);
+      const json = await resp.json();
+      $loading--;
+      if (json.status) currentCompleteds = [];
+      else await fire("Error", "Error", "error");
+    }
+  };
   const delTask = async (id: number) => {
-    if (await confirm("task")) {
+    if (await confirm("This task")) {
       $loading++;
       const resp = await post("/task/delete/" + id);
       $loading--;
@@ -216,7 +231,7 @@
       if ($lists.length == 1)
         await fire("Error", "You must have at least one list!", "error");
       else {
-        if (await confirm("list")) {
+        if (await confirm("This list")) {
           $loading++;
           const resp = await post("/list/delete/" + $current.id);
           $loading--;
@@ -260,23 +275,23 @@
       const sel = window.getSelection() as Selection;
       sel.removeAllRanges();
       sel.addRange(range);
-      const selectedTarget = document.querySelector(".selected>span");
+      const selectedTarget = document.querySelector(".selected>.task");
       if (selectedTarget)
         await edit(selected, (selectedTarget as HTMLElement).innerText);
       selected = id;
     }
   };
+  const expand = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains("delete")) showCompleted = !showCompleted;
+  };
   const handleWindowClick = async (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     if (!target.classList.contains("task") && target.innerText !== "Add Task") {
       const id = selected;
-      const selectedTarget = document.querySelector(".selected");
+      const selectedTarget = document.querySelector(".selected>.task");
       if (selectedTarget)
-        if (id)
-          await edit(
-            id,
-            (selectedTarget.querySelector("span") as HTMLElement).innerText
-          );
+        if (id) await edit(id, (selectedTarget as HTMLElement).innerText);
         else await add((selectedTarget as HTMLElement).innerText);
       selected = 0;
     }
@@ -316,8 +331,11 @@
     display: inline-flex;
   }
 
-  .list-group-item {
-    padding: 0;
+  .created {
+    padding: 0.75rem 0;
+    color: #5f6368;
+    width: 80px;
+    text-align: right;
   }
 
   .list-group-item:hover {
@@ -325,32 +343,6 @@
       0 1px 3px 1px rgba(60, 64, 67, 0.149);
     outline: 0;
     z-index: 2000;
-  }
-
-  .check,
-  .uncheck,
-  .operation {
-    font-family: "Material Icons";
-    font-style: normal;
-    font-size: 1.5rem;
-    padding: 12px;
-    line-height: normal;
-    color: #5f6368;
-    cursor: pointer;
-  }
-
-  .check:before {
-    content: "radio_button_unchecked";
-  }
-
-  .check:hover:before,
-  .uncheck {
-    content: "done";
-    color: #468dff;
-  }
-
-  .delete:hover {
-    color: #d93025;
   }
 
   .completeds {
@@ -368,11 +360,6 @@
     font-size: 1.5rem;
     float: right;
     line-height: normal;
-  }
-
-  .task,
-  .completed {
-    padding: 0.75rem 0;
   }
 
   .completed {
@@ -419,6 +406,8 @@
           contenteditable={task.id === selected}
           on:keydown={async (e) => await taskKeydown(e, task.id)}
           on:click={async (e) => await taskClick(e, task.id)}>{task.task}</span>
+        <span
+          class="created">{new Date(task.created).toLocaleDateString()}</span>
         <i
           style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
           class="operation delete"
@@ -427,10 +416,12 @@
     {/each}
   </ul>
   <div style="height: 100%">
-    <div class="completeds" on:click={() => (showCompleted = !showCompleted)}>
+    <div class="completeds" on:click={expand}>
       <span>Completed ({currentCompleteds.length})</span>
       <i class="expand">{showCompleted ? 'expand_more' : 'expand_less'}</i>
-      {#if showCompleted}<i class="expand delete">delete</i>{/if}
+      {#if showCompleted && currentCompleteds.length}
+        <i class="expand delete" on:click={emptyCompleted}>delete</i>
+      {/if}
     </div>
     {#if showCompleted}
       <ul
@@ -443,6 +434,8 @@
               class="uncheck"
               on:click={async () => await incompleteTask(task.id)}>done</i>
             <span class="completed">{task.task}</span>
+            <span
+              class="created">{new Date(task.created).toLocaleDateString()}</span>
           </li>
         {/each}
       </ul>

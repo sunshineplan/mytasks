@@ -31,11 +31,48 @@ header {
   background-color: #eaf5fd;
 }
 
-li > span,
-#list {
+li>span, #list {
   outline: 0;
   display: inline-block;
   min-width: 1px;
+}
+
+.check, .uncheck, .operation {
+  font-family: "Material Icons";
+  font-style: normal;
+  font-size: 1.5rem;
+  padding: 12px;
+  line-height: normal;
+  color: #5f6368;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.check:before {
+  content: "radio_button_unchecked";
+}
+
+.check:hover:before, .uncheck {
+  content: "done";
+  color: #468dff;
+}
+
+.check:hover:before, .uncheck:hover {
+  background-color: #e6ecf0;
+  border-radius: 50%;
+}
+
+.delete:hover {
+  color: #d93025;
+}
+
+.list-group-item {
+  padding: 0;
+}
+
+.task, .completed {
+  padding: 0.75rem 0;
+  width: calc(100% - 176px);
 }
 
 .selected {
