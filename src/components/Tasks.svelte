@@ -407,7 +407,7 @@
           on:keydown={async (e) => await taskKeydown(e, task.id)}
           on:click={async (e) => await taskClick(e, task.id)}>{task.task}</span>
         <span
-          class="created">{new Date(task.created).toLocaleDateString()}</span>
+          class="created">{new Date(task.created.replace('Z', '')).toLocaleDateString()}</span>
         <i
           style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
           class="operation delete"
@@ -435,7 +435,7 @@
               on:click={async () => await incompleteTask(task.id)}>done</i>
             <span class="completed">{task.task}</span>
             <span
-              class="created">{new Date(task.created).toLocaleDateString()}</span>
+              class="created">{new Date(task.created.replace('Z', '')).toLocaleDateString()}</span>
           </li>
         {/each}
       </ul>
