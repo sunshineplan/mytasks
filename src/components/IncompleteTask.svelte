@@ -67,8 +67,15 @@
     }
   };
   const handleClick = (event: MouseEvent) => {
-    if (selected !== task.id) {
-      const target = event.target as HTMLElement;
+    let target = event.target as HTMLElement;
+    if (
+      selected !== task.id &&
+      !target.classList.contains("complete") &&
+      !target.classList.contains("delete")
+    ) {
+      target = (target.parentNode as Element).querySelector(
+        ".task"
+      ) as HTMLElement;
       target.setAttribute("contenteditable", "true");
       target.focus();
       const range = document.createRange();
@@ -93,13 +100,13 @@
   class:selected={task.id === selected}
   on:mouseenter={() => (hover = true)}
   on:mouseleave={() => (hover = false)}
+  on:click={handleClick}
 >
   <i class="icon complete" on:click={complete} />
   <span
     class="task"
     contenteditable={task.id === selected}
-    on:keydown={handleKeydown}
-    on:click={handleClick}>
+    on:keydown={handleKeydown}>
     {task.task}
   </span>
   <span class="created">
@@ -136,5 +143,6 @@
     color: #5f6368;
     width: 80px;
     text-align: right;
+    cursor: default;
   }
 </style>

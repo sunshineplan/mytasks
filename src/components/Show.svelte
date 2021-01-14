@@ -159,7 +159,8 @@
   const handleWindowClick = async (event: MouseEvent) => {
     const target = event.target as Element;
     if (
-      !target.classList.contains("task") &&
+      target.parentNode &&
+      !(target.parentNode as Element).classList.contains("selected") &&
       target.textContent !== "Add Task"
     ) {
       const id = selected;
@@ -169,7 +170,11 @@
         else await add((selectedTarget as HTMLElement).innerText);
       selected = 0;
     }
-    if (target.id != "list" && !target.classList.contains("edit") && editable) {
+    if (
+      target.id !== "list" &&
+      !target.classList.contains("edit") &&
+      editable
+    ) {
       await editList(
         (document.querySelector("#list") as HTMLElement).innerText
       );
