@@ -8,10 +8,11 @@
 
   export let selected = 0;
   export let task: Task;
+  let hover = false;
 
-  const complete = async (id: number) => {
+  const complete = async () => {
     $loading++;
-    const resp = await post("/task/complete/" + id);
+    const resp = await post("/task/complete/" + task.id);
     const json = await resp.json();
     $loading--;
     if (json.status) {
@@ -19,7 +20,7 @@
         let index = $lists.findIndex((list) => list.id === $current.id);
         $lists[index].count--;
         index = $tasks[$current.list].incomplete.findIndex(
-          (task) => task.id === id
+          (i) => task.id === i.id
         );
         $tasks[$current.list].completed = [
           {
@@ -37,15 +38,15 @@
     await fire("Error", "Error", "error");
   };
 
-  const del = async (id: number) => {
+  const del = async () => {
     if (await confirm("This task")) {
       $loading++;
-      const resp = await post("/task/delete/" + id);
+      const resp = await post("/task/delete/" + task.id);
       $loading--;
       if (!resp.ok) await fire("Error", await resp.text(), "error");
       else {
         let index = $tasks[$current.list].incomplete.findIndex(
-          (task) => task.id === id
+          (i) => task.id === i.id
         );
         $tasks[$current.list].incomplete.splice(index, 1);
         index = $lists.findIndex((list) => list.id === $current.id);
@@ -55,15 +56,18 @@
     }
   };
 
-  const handleKeydown = (event: KeyboardEvent, id: number) => {
+  const handleKeydown = (event: KeyboardEvent) => {
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
-      dispatch("edit", { id, task: (event.target as HTMLElement).innerText });
+      dispatch("edit", {
+        id: task.id,
+        task: (event.target as HTMLElement).innerText,
+      });
       selected = 0;
     }
   };
-  const handleClick = (event: MouseEvent, id: number) => {
-    if (selected !== id) {
+  const handleClick = (event: MouseEvent) => {
+    if (selected !== task.id) {
       const target = event.target as HTMLElement;
       target.setAttribute("contenteditable", "true");
       target.focus();
@@ -79,28 +83,33 @@
           id: selected,
           task: (selectedTarget as HTMLElement).innerText,
         });
-      selected = id;
+      selected = task.id;
     }
   };
 </script>
 
-<li class="list-group-item" class:selected={task.id === selected}>
-  <i class="icon check" on:click={async () => await complete(task.id)} />
+<li
+  class="list-group-item"
+  class:selected={task.id === selected}
+  on:mouseenter={() => (hover = true)}
+  on:mouseleave={() => (hover = false)}
+>
+  <i class="icon complete" on:click={complete} />
   <span
     class="task"
     contenteditable={task.id === selected}
-    on:keydown={(e) => handleKeydown(e, task.id)}
-    on:click={(e) => handleClick(e, task.id)}>
+    on:keydown={handleKeydown}
+    on:click={handleClick}>
     {task.task}
   </span>
   <span class="created">
     {new Date(task.created.replace("Z", "")).toLocaleDateString()}
   </span>
-  <i
-    style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
-    class="icon delete"
-    on:click={async () => await del(task.id)}>delete</i
-  >
+  {#if task.id === selected}
+    <i class="icon delete" on:click={del}>delete</i>
+  {:else if hover}
+    <i class="icon">edit</i>
+  {/if}
 </li>
 
 <style>
@@ -108,16 +117,16 @@
     display: inline-flex;
   }
 
-  .check:before {
+  .complete:before {
     content: "radio_button_unchecked";
   }
 
-  .check:hover:before {
+  .complete:hover:before {
     content: "done";
     color: #468dff;
   }
 
-  .check:hover {
+  .complete:hover {
     background-color: #e6ecf0;
     border-radius: 50%;
   }

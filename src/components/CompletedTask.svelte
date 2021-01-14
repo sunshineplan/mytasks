@@ -9,9 +9,9 @@
   export let task: Task;
   let hover = false;
 
-  const revert = async (id: number) => {
+  const revert = async () => {
     $loading++;
-    const resp = await post("/completed/revert/" + id);
+    const resp = await post("/completed/revert/" + task.id);
     const json = await resp.json();
     $loading--;
     if (json.status) {
@@ -19,7 +19,7 @@
         let index = $lists.findIndex((list) => list.id === $current.id);
         $lists[index].count++;
         index = $tasks[$current.list].completed.findIndex(
-          (task) => task.id === id
+          (i) => task.id === i.id
         );
         $tasks[$current.list].incomplete = [
           {
@@ -37,14 +37,14 @@
     await fire("Error", "Error", "error");
   };
 
-  const del = async (id: number) => {
+  const del = async () => {
     $loading++;
-    const resp = await post("/completed/delete/" + id);
+    const resp = await post("/completed/delete/" + task.id);
     const json = await resp.json();
     $loading--;
     if (json.status) {
       const index = $tasks[$current.list].completed.findIndex(
-        (task) => task.id === id
+        (i) => task.id === i.id
       );
       $tasks[$current.list].completed.splice(index, 1);
       dispatch("refresh");
@@ -59,13 +59,13 @@
   on:mouseenter={() => (hover = true)}
   on:mouseleave={() => (hover = false)}
 >
-  <i class="icon completed" on:click={async () => await revert(task.id)}>done</i>
+  <i class="icon revert" on:click={revert}>done</i>
   <span class="task">{task.task}</span>
   <span class="created">
     {new Date(task.created.replace("Z", "")).toLocaleDateString()}
   </span>
   {#if hover}
-    <i class="icon delete" on:click={async () => await del(task.id)}>delete</i>
+    <i class="icon delete" on:click={del}>delete</i>
   {/if}
 </li>
 
@@ -74,12 +74,12 @@
     display: inline-flex;
   }
 
-  .completed {
+  .revert {
     content: "done";
     color: #468dff;
   }
 
-  .completed:hover {
+  .revert:hover {
     background-color: #e6ecf0;
     border-radius: 50%;
   }
