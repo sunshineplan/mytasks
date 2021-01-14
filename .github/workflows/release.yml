@@ -81,7 +81,7 @@ jobs:
 
       - name: Create ZIP archive
         run: |
-          zip -9vr release.zip public mytasks config.ini.default
+          zip -9vr release.zip public scripts mytasks config.ini.default
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
