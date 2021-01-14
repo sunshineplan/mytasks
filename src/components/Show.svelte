@@ -95,7 +95,7 @@
     if (!selected && selectedTarget)
       await add((selectedTarget as HTMLElement).innerText);
     selected = 0;
-    const ul = document.querySelector("#tasks") as HTMLLIElement;
+    const ul = document.querySelector("#tasks") as Element;
     const li = document.createElement("li");
     li.classList.add("list-group-item", "selected");
     const span = document.createElement("span");
@@ -157,8 +157,11 @@
   };
 
   const handleWindowClick = async (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    if (!target.classList.contains("task") && target.innerText !== "Add Task") {
+    const target = event.target as Element;
+    if (
+      !target.classList.contains("task") &&
+      target.textContent !== "Add Task"
+    ) {
       const id = selected;
       const selectedTarget = document.querySelector(".selected>.task");
       if (selectedTarget)

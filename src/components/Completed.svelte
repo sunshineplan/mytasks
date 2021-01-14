@@ -11,7 +11,7 @@
   export let completedTasks: Task[] = [];
 
   const expand = (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
+    const target = event.target as Element;
     if (!target.classList.contains("delete")) show = !show;
   };
 

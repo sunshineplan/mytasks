@@ -12,7 +12,7 @@
 
   onMount(() => {
     const sortable = new Sortable(
-      document.querySelector("#tasks") as HTMLElement,
+      document.querySelector("#tasks") as Element,
       {
         animation: 150,
         delay: 100,

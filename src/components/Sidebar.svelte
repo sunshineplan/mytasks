@@ -34,7 +34,7 @@
 
   const addList = () => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    const ul = document.querySelector("ul.navbar-nav") as HTMLLIElement;
+    const ul = document.querySelector("ul.navbar-nav") as Element;
     const li = document.createElement("li");
     li.classList.add("nav-link", "new");
     ul.appendChild(li);
@@ -72,8 +72,8 @@
     }
   };
   const handleClick = async (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    if (!target.classList.contains("new") && target.innerText !== "Add List") {
+    const target = event.target as Element;
+    if (!target.classList.contains("new") && target.textContent !== "Add List") {
       const newList = document.querySelector(".new");
       if (newList) {
         const list = (newList.textContent as string).trim();

@@ -61,7 +61,7 @@
       event.preventDefault();
       dispatch("edit", {
         id: task.id,
-        task: (event.target as HTMLElement).innerText,
+        task: (event.target as Element).textContent,
       });
       selected = 0;
     }
@@ -81,7 +81,7 @@
       if (selectedTarget)
         dispatch("edit", {
           id: selected,
-          task: (selectedTarget as HTMLElement).innerText,
+          task: (selectedTarget as Element).textContent,
         });
       selected = task.id;
     }
