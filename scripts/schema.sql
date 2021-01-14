@@ -59,7 +59,7 @@ BEGIN
     SELECT LAST_INSERT_ID();
 END;;
 
-CREATE PROCEDURE incomplete_task(task_id INT)
+CREATE PROCEDURE revert_completed(task_id INT)
 BEGIN
     START TRANSACTION;
     INSERT INTO task (task, list_id) SELECT task, list_id FROM completed WHERE id = task_id;

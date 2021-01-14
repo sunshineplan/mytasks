@@ -22,7 +22,7 @@
     showCompleted = false;
     if (!$tasks.hasOwnProperty($current.list)) {
       $loading++;
-      const resp = await post("/task/get", { list: $current.id });
+      const resp = await post("/get", { list: $current.id });
       $tasks[$current.list] = await resp.json();
       $loading--;
     }
@@ -220,10 +220,10 @@
         on:keydown={listKeydown}>
         {$current.list}
       </span>
-      <span class="btn icon" on:click={listClick}>
+      <span on:click={listClick}>
         {#if !editable}
-          <i class="material-icons edit">edit</i>
-        {:else}<i class="material-icons edit">delete</i>{/if}
+          <i class="icon edit">edit</i>
+        {:else}<i class="icon edit">delete</i>{/if}
       </span>
     </div>
     <button class="btn btn-primary" on:click={addTask}>Add Task</button>
@@ -244,21 +244,17 @@
 </div>
 
 <style>
-  .icon {
-    color: #007bff !important;
-    cursor: pointer;
-  }
-
-  .icon:hover {
-    color: #0056b3 !important;
-  }
-
   .h3 {
     cursor: default;
   }
 
   .edit {
-    font-size: 18px;
+    font-size: 1.25rem;
+    color: #007bff;
+  }
+
+  .edit:hover {
+    color: #0056b3;
   }
 
   .editable {

@@ -35,63 +35,6 @@ func checkAll(taskID, listID, userID interface{}) bool {
 	return false
 }
 
-func getTask(c *gin.Context) {
-	var r task
-	if err := c.BindJSON(&r); err != nil {
-		c.String(400, "")
-		return
-	}
-	userID := sessions.Default(c).Get("userID")
-	incomplete := []task{}
-	completed := []task{}
-
-	ec := make(chan error, 1)
-	go func() {
-		rows, err := db.Query(
-			"SELECT task_id, task, list_id, created FROM tasks WHERE list_id = ? AND user_id = ?",
-			r.List, userID)
-		if err != nil {
-			ec <- err
-			return
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var task task
-			if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
-				ec <- err
-				return
-			}
-			incomplete = append(incomplete, task)
-		}
-		ec <- nil
-	}()
-	rows, err := db.Query(
-		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ?",
-		r.List, userID)
-	if err != nil {
-		log.Println("Failed to get completeds:", err)
-		c.String(500, "")
-		return
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var task task
-		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
-			log.Println("Failed to scan completeds:", err)
-			c.String(500, "")
-			return
-		}
-		completed = append(completed, task)
-	}
-	if err := <-ec; err != nil {
-		log.Println("Failed to get tasks:", err)
-		c.String(500, "")
-		return
-	}
-
-	c.JSON(200, gin.H{"incomplete": incomplete, "completed": completed})
-}
-
 func addTask(c *gin.Context) {
 	var task task
 	if err := c.BindJSON(&task); err != nil {
@@ -161,51 +104,6 @@ func completeTask(c *gin.Context) {
 			return
 		}
 		c.JSON(200, gin.H{"status": 1, "id": insertID})
-		return
-	}
-	c.String(403, "")
-}
-
-func incompleteTask(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		log.Println("Failed to get id param:", err)
-		c.String(400, "")
-		return
-	}
-
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
-		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
-		var insertID int
-		if err := db.QueryRow("CALL incomplete_task(?)", id).Scan(&insertID); err != nil {
-			log.Println("Failed to incomplete task:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1, "id": insertID})
-		return
-	}
-	c.String(403, "")
-}
-
-func emptyCompleted(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		log.Println("Failed to get id param:", err)
-		c.String(400, "")
-		return
-	}
-
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE list_id = ? AND user_id = ?",
-		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
-		if _, err := db.Exec("DELETE FROM completed WHERE list_id = ?", id); err != nil {
-			log.Println("Failed to empty completed task:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1})
 		return
 	}
 	c.String(403, "")

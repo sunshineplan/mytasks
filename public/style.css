@@ -37,14 +37,7 @@ li>span, #list {
   min-width: 1px;
 }
 
-.list-group-item:hover {
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
-    0 1px 3px 1px rgba(60, 64, 67, 0.149);
-  outline: 0;
-  z-index: 2000;
-}
-
-.check, .uncheck, .operation {
+.icon {
   font-family: "Material Icons";
   font-style: normal;
   font-size: 1.5rem;
@@ -55,26 +48,18 @@ li>span, #list {
   height: fit-content;
 }
 
-.check:before {
-  content: "radio_button_unchecked";
-}
-
-.check:hover:before, .uncheck {
-  content: "done";
-  color: #468dff;
-}
-
-.check:hover, .uncheck:hover {
-  background-color: #e6ecf0;
-  border-radius: 50%;
-}
-
 .delete:hover {
   color: #d93025;
 }
 
 .list-group-item {
   padding: 0;
+}
+
+.list-group-item:hover {
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302), 0 1px 3px 1px rgba(60, 64, 67, 0.149);
+  outline: 0;
+  z-index: 2000;
 }
 
 .task {
@@ -95,10 +80,6 @@ li>span, #list {
 
 .swal {
   margin: 8px 6px;
-}
-
-button+button {
-  margin-left: 0.3em;
 }
 
 .sortable-ghost {

@@ -91,7 +91,7 @@
 >
   {#each incompleteTasks as task (task.id)}
     <li class="list-group-item" class:selected={task.id === selected}>
-      <i class="check" on:click={async () => await complete(task.id)} />
+      <i class="icon check" on:click={async () => await complete(task.id)} />
       <span
         class="task"
         contenteditable={task.id === selected}
@@ -104,7 +104,7 @@
       </span>
       <i
         style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
-        class="operation delete"
+        class="icon delete"
         on:click={async () => await del(task.id)}>delete</i
       >
     </li>
@@ -119,6 +119,20 @@
 
   li {
     display: inline-flex;
+  }
+
+  .check:before {
+    content: "radio_button_unchecked";
+  }
+
+  .check:hover:before {
+    content: "done";
+    color: #468dff;
+  }
+
+  .check:hover {
+    background-color: #e6ecf0;
+    border-radius: 50%;
   }
 
   .created {

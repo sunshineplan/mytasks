@@ -33,3 +33,60 @@ func info(c *gin.Context) {
 
 	c.JSON(200, info)
 }
+
+func get(c *gin.Context) {
+	var r task
+	if err := c.BindJSON(&r); err != nil {
+		c.String(400, "")
+		return
+	}
+	userID := sessions.Default(c).Get("userID")
+	incomplete := []task{}
+	completed := []task{}
+
+	ec := make(chan error, 1)
+	go func() {
+		rows, err := db.Query(
+			"SELECT task_id, task, list_id, created FROM tasks WHERE list_id = ? AND user_id = ?",
+			r.List, userID)
+		if err != nil {
+			ec <- err
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var task task
+			if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
+				ec <- err
+				return
+			}
+			incomplete = append(incomplete, task)
+		}
+		ec <- nil
+	}()
+	rows, err := db.Query(
+		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ?",
+		r.List, userID)
+	if err != nil {
+		log.Println("Failed to get completeds:", err)
+		c.String(500, "")
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var task task
+		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
+			log.Println("Failed to scan completeds:", err)
+			c.String(500, "")
+			return
+		}
+		completed = append(completed, task)
+	}
+	if err := <-ec; err != nil {
+		log.Println("Failed to get tasks:", err)
+		c.String(500, "")
+		return
+	}
+
+	c.JSON(200, gin.H{"incomplete": incomplete, "completed": completed})
+}
