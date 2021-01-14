@@ -1,84 +1,39 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { fire, confirm, post } from "../misc";
-  import { current, loading, lists, tasks } from "../stores";
+  import Sortable from "sortablejs";
+  import { onMount } from "svelte";
+  import IncompleteTask from "./IncompleteTask.svelte";
+  import { fire, post } from "../misc";
+  import { current } from "../stores";
   import type { Task } from "../stores";
-
-  const dispatch = createEventDispatcher();
 
   export let showCompleted = false;
   export let selected = 0;
   export let incompleteTasks: Task[] = [];
-  export let completedTasks: Task[] = [];
 
-  const complete = async (id: number) => {
-    $loading++;
-    const resp = await post("/task/complete/" + id);
-    const json = await resp.json();
-    $loading--;
-    if (json.status) {
-      if (json.id) {
-        let index = $lists.findIndex((list) => list.id === $current.id);
-        $lists[index].count--;
-        index = incompleteTasks.findIndex((task) => task.id === id);
-        $tasks[$current.list].completed = [
-          {
-            id: json.id,
-            task: incompleteTasks[index].task,
-            created: new Date().toLocaleString(),
-          },
-          ...completedTasks,
-        ];
-        incompleteTasks.splice(index, 1);
-        dispatch("refresh");
-        return;
+  onMount(() => {
+    const sortable = new Sortable(
+      document.querySelector("#tasks") as HTMLElement,
+      {
+        animation: 150,
+        delay: 100,
+        swapThreshold: 0.5,
+        onUpdate,
       }
-    }
-    await fire("Error", "Error", "error");
-  };
+    );
+    return () => sortable.destroy();
+  });
 
-  const del = async (id: number) => {
-    if (await confirm("This task")) {
-      $loading++;
-      const resp = await post("/task/delete/" + id);
-      $loading--;
-      if (!resp.ok) await fire("Error", await resp.text(), "error");
-      else {
-        let index = incompleteTasks.findIndex((task) => task.id === id);
-        incompleteTasks.splice(index, 1);
-        index = $lists.findIndex((list) => list.id === $current.id);
-        $lists[index].count--;
-        dispatch("refresh");
-      }
-    }
-  };
-
-  const handleKeydown = (event: KeyboardEvent, id: number) => {
-    if (event.key == "Enter" || event.key == "Escape") {
-      event.preventDefault();
-      dispatch("edit", { id, task: (event.target as HTMLElement).innerText });
-      selected = 0;
-    }
-  };
-  const handleClick = (event: MouseEvent, id: number) => {
-    if (selected !== id) {
-      const target = event.target as HTMLElement;
-      target.setAttribute("contenteditable", "true");
-      target.focus();
-      const range = document.createRange();
-      range.selectNodeContents(target);
-      range.collapse(false);
-      const sel = window.getSelection() as Selection;
-      sel.removeAllRanges();
-      sel.addRange(range);
-      const selectedTarget = document.querySelector(".selected>.task");
-      if (selectedTarget)
-        dispatch("edit", {
-          id: selected,
-          task: (selectedTarget as HTMLElement).innerText,
-        });
-      selected = id;
-    }
+  const onUpdate = async (event: Sortable.SortableEvent) => {
+    const resp = await post("/reorder", {
+      list: $current.id,
+      old: incompleteTasks[event.oldIndex as number].id,
+      new: incompleteTasks[event.newIndex as number].id,
+    });
+    if ((await resp.text()) == "1") {
+      const task = incompleteTasks[event.oldIndex as number];
+      incompleteTasks.splice(event.oldIndex as number, 1);
+      incompleteTasks.splice(event.newIndex as number, 0, task);
+    } else await fire("Error", "Failed to reorder.", "error");
   };
 </script>
 
@@ -90,24 +45,7 @@
   id="tasks"
 >
   {#each incompleteTasks as task (task.id)}
-    <li class="list-group-item" class:selected={task.id === selected}>
-      <i class="icon check" on:click={async () => await complete(task.id)} />
-      <span
-        class="task"
-        contenteditable={task.id === selected}
-        on:keydown={(e) => handleKeydown(e, task.id)}
-        on:click={(e) => handleClick(e, task.id)}>
-        {task.task}
-      </span>
-      <span class="created">
-        {new Date(task.created.replace("Z", "")).toLocaleDateString()}
-      </span>
-      <i
-        style="visibility:{task.id === selected ? 'visible' : 'hidden'}"
-        class="icon delete"
-        on:click={async () => await del(task.id)}>delete</i
-      >
-    </li>
+    <IncompleteTask bind:selected bind:task on:refresh on:edit />
   {/each}
 </ul>
 
@@ -115,30 +53,5 @@
   ul {
     cursor: default;
     overflow-y: auto;
-  }
-
-  li {
-    display: inline-flex;
-  }
-
-  .check:before {
-    content: "radio_button_unchecked";
-  }
-
-  .check:hover:before {
-    content: "done";
-    color: #468dff;
-  }
-
-  .check:hover {
-    background-color: #e6ecf0;
-    border-radius: 50%;
-  }
-
-  .created {
-    padding: 0.75rem 0;
-    color: #5f6368;
-    width: 80px;
-    text-align: right;
   }
 </style>

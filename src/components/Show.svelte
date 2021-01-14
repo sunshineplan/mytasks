@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Sortable from "sortablejs";
-  import { onMount } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post } from "../misc";
@@ -30,32 +28,6 @@
   };
 
   $: $current && getTasks();
-
-  onMount(() => {
-    const sortable = new Sortable(
-      document.querySelector("#tasks") as HTMLElement,
-      {
-        animation: 150,
-        delay: 100,
-        swapThreshold: 0.5,
-        onUpdate,
-      }
-    );
-    return () => sortable.destroy();
-  });
-
-  const onUpdate = async (event: Sortable.SortableEvent) => {
-    const resp = await post("/reorder", {
-      list: $current.id,
-      old: currentIncomplete[event.oldIndex as number].id,
-      new: currentIncomplete[event.newIndex as number].id,
-    });
-    if ((await resp.text()) == "1") {
-      const task = currentIncomplete[event.oldIndex as number];
-      currentIncomplete.splice(event.oldIndex as number, 1);
-      currentIncomplete.splice(event.newIndex as number, 0, task);
-    } else await fire("Error", "Failed to reorder.", "error");
-  };
 
   const editList = async (list: string) => {
     const index = $lists.findIndex((list) => list.id === $current.id);
@@ -232,7 +204,6 @@
     bind:showCompleted
     bind:selected
     bind:incompleteTasks={currentIncomplete}
-    bind:completedTasks={currentCompleted}
     on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
     on:refresh={refresh}
   />
