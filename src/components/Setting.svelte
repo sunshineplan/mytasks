@@ -69,7 +69,8 @@
         bind:value={password}
         id="password"
         maxlength="20"
-        required />
+        required
+      />
       <div class="invalid-feedback">This field is required.</div>
     </div>
     <div class="form-group">
@@ -80,7 +81,8 @@
         bind:value={password1}
         id="password1"
         maxlength="20"
-        required />
+        required
+      />
       <div class="invalid-feedback">This field is required.</div>
     </div>
     <div class="form-group">
@@ -91,9 +93,12 @@
         bind:value={password2}
         id="password2"
         maxlength="20"
-        required />
+        required
+      />
       <div class="invalid-feedback">This field is required.</div>
-      <small class="form-text text-muted">Max password length: 20 characters.</small>
+      <small class="form-text text-muted">
+        Max password length: 20 characters.
+      </small>
     </div>
     <button class="btn btn-primary" on:click={setting}>Change</button>
     <button class="btn btn-primary" on:click={cancel}>Cancel</button>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
-  import Tasks from "./Tasks.svelte";
+  import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post } from "../misc";
   import { current, loading, lists, tasks } from "../stores";
@@ -203,6 +203,46 @@
   };
 </script>
 
+<svelte:head>
+  <title>{$current.list} - My Tasks</title>
+</svelte:head>
+
+<svelte:window on:click={handleWindowClick} />
+
+<div style="height: 100%">
+  <header style="padding-left: 20px">
+    <div style="height: 50px">
+      <span
+        class="h3"
+        id="list"
+        class:editable
+        contenteditable={editable}
+        on:keydown={listKeydown}>
+        {$current.list}
+      </span>
+      <span class="btn icon" on:click={listClick}>
+        {#if !editable}
+          <i class="material-icons edit">edit</i>
+        {:else}<i class="material-icons edit">delete</i>{/if}
+      </span>
+    </div>
+    <button class="btn btn-primary" on:click={addTask}>Add Task</button>
+  </header>
+  <Incomplete
+    bind:showCompleted
+    bind:selected
+    bind:incompleteTasks={currentIncomplete}
+    bind:completedTasks={currentCompleted}
+    on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
+    on:refresh={refresh}
+  />
+  <Completed
+    bind:show={showCompleted}
+    bind:completedTasks={currentCompleted}
+    on:refresh={refresh}
+  />
+</div>
+
 <style>
   .icon {
     color: #007bff !important;
@@ -225,39 +265,3 @@
     text-decoration: underline;
   }
 </style>
-
-<svelte:head>
-  <title>{$current.list} - My Tasks</title>
-</svelte:head>
-
-<svelte:window on:click={handleWindowClick} />
-
-<div style="height: 100%">
-  <header style="padding-left: 20px">
-    <div style="height: 50px">
-      <span
-        class="h3"
-        id="list"
-        class:editable
-        contenteditable={editable}
-        on:keydown={listKeydown}>{$current.list}</span>
-      <span class="btn icon" on:click={listClick}>
-        {#if !editable}
-          <i class="material-icons edit">edit</i>
-        {:else}<i class="material-icons edit">delete</i>{/if}
-      </span>
-    </div>
-    <button class="btn btn-primary" on:click={addTask}>Add Task</button>
-  </header>
-  <Tasks
-    bind:showCompleted
-    bind:selected
-    bind:incompleteTasks={currentIncomplete}
-    bind:completedTasks={currentCompleted}
-    on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
-    on:refresh={refresh} />
-  <Completed
-    bind:show={showCompleted}
-    bind:completedTasks={currentCompleted}
-    on:refresh={refresh} />
-</div>

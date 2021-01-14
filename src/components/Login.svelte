@@ -37,13 +37,6 @@
   };
 </script>
 
-<style>
-  .login {
-    width: 250px;
-    margin: 0 auto 20px;
-  }
-</style>
-
 <svelte:head>
   <title>Log In - My Tasks</title>
 </svelte:head>
@@ -52,9 +45,8 @@
   <header>
     <h3
       class="d-flex justify-content-center align-items-center"
-      style="height: 100%">
-      Log In
-    </h3>
+      style="height: 100%"
+    >Log In</h3>
   </header>
   <div class="login">
     <div class="form-group">
@@ -65,7 +57,8 @@
         id="username"
         maxlength="20"
         placeholder="Username"
-        required />
+        required
+      />
     </div>
     <div class="form-group">
       <label for="password">Password</label>
@@ -76,17 +69,26 @@
         id="password"
         maxlength="20"
         placeholder="Password"
-        required />
+        required
+      />
     </div>
     <div class="form-group form-check">
       <input
         type="checkbox"
         class="form-check-input"
         bind:checked={rememberme}
-        id="rememberme" />
+        id="rememberme"
+      />
       <label class="form-check-label" for="rememberme">Remember Me</label>
     </div>
     <hr />
     <button class="btn btn-primary login" on:click={login}>Log In</button>
   </div>
 </div>
+
+<style>
+  .login {
+    width: 250px;
+    margin: 0 auto 20px;
+  }
+</style>

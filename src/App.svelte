@@ -35,6 +35,44 @@
   };
 </script>
 
+<nav class="navbar navbar-light topbar">
+  <div class="d-flex" style="height: 100%">
+    <a class="brand" href="/">My Tasks</a>
+  </div>
+  {#if $user}
+    <div class="navbar-nav flex-row">
+      <span class="nav-link">{$user}</span>
+      <span class="nav-link link" on:click={setting}>Setting</span>
+      <a class="nav-link link" href="/logout">Log Out</a>
+    </div>
+  {:else}
+    <div class="navbar-nav flex-row"><span class="nav-link">Log In</span></div>
+  {/if}
+</nav>
+{#if !$user}
+  <Login on:info={getInfo} />
+{:else}
+  <Sidebar />
+  {#await promise then _}
+    <div
+      class="content"
+      style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
+      on:mousedown={() => ($showSidebar = false)}
+    >
+      <svelte:component this={components[$component]} />
+    </div>
+  {/await}
+{/if}
+<div class="loading" hidden={!$loading}>
+  <div class="sk-wave sk-center">
+    <div class="sk-wave-rect" />
+    <div class="sk-wave-rect" />
+    <div class="sk-wave-rect" />
+    <div class="sk-wave-rect" />
+    <div class="sk-wave-rect" />
+  </div>
+</div>
+
 <style>
   .topbar {
     position: fixed;
@@ -93,40 +131,3 @@
     }
   }
 </style>
-
-<nav class="navbar navbar-light topbar">
-  <div class="d-flex" style="height: 100%">
-    <a class="brand" href="/">My Tasks</a>
-  </div>
-  {#if $user}
-    <div class="navbar-nav flex-row">
-      <span class="nav-link">{$user}</span>
-      <span class="nav-link link" on:click={setting}>Setting</span>
-      <a class="nav-link link" href="/logout">Log Out</a>
-    </div>
-  {:else}
-    <div class="navbar-nav flex-row"><span class="nav-link">Log In</span></div>
-  {/if}
-</nav>
-{#if !$user}
-  <Login on:info={getInfo} />
-{:else}
-  <Sidebar />
-  {#await promise then _}
-    <div
-      class="content"
-      style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
-      on:mousedown={() => ($showSidebar = false)}>
-      <svelte:component this={components[$component]} />
-    </div>
-  {/await}
-{/if}
-<div class="loading" hidden={!$loading}>
-  <div class="sk-wave sk-center">
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-  </div>
-</div>

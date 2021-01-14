@@ -84,6 +84,45 @@
   };
 </script>
 
+<svelte:window
+  on:keydown={handleKeydown}
+  on:resize={checkSize}
+  on:click={handleClick}
+/>
+
+{#if smallSize}
+  <span
+    class="toggle"
+    on:click={toggle}
+    on:mouseenter={() => (hover = true)}
+    on:mouseleave={() => (hover = false)}>
+    <svg viewBox="0 0 70 70" width="40" height="30">
+      {#each [10, 30, 50] as y}
+        <rect {y} width="100%" height="10" fill={hover ? "#1a73e8" : "white"} />
+      {/each}
+    </svg>
+  </span>
+{/if}
+<nav
+  class="nav flex-column navbar-light sidebar"
+  hidden={!$showSidebar && smallSize}
+>
+  <div class="list-menu">
+    <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
+    <ul class="navbar-nav">
+      {#each $lists as list (list.id)}
+        <li
+          class="nav-link list"
+          class:active={$current.id === list.id && $component === "show"}
+          on:click={() => goto(list)}
+        >
+          {list.list} ({list.count})
+        </li>
+      {/each}
+    </ul>
+  </div>
+</nav>
+
 <style>
   .toggle {
     position: fixed;
@@ -158,39 +197,3 @@
     }
   }
 </style>
-
-<svelte:window
-  on:keydown={handleKeydown}
-  on:resize={checkSize}
-  on:click={handleClick} />
-
-{#if smallSize}
-  <span
-    class="toggle"
-    on:click={toggle}
-    on:mouseenter={() => (hover = true)}
-    on:mouseleave={() => (hover = false)}>
-    <svg viewBox="0 0 70 70" width="40" height="30">
-      {#each [10, 30, 50] as y}
-        <rect {y} width="100%" height="10" fill={hover ? '#1a73e8' : 'white'} />
-      {/each}
-    </svg>
-  </span>
-{/if}
-<nav
-  class="nav flex-column navbar-light sidebar"
-  hidden={!$showSidebar && smallSize}>
-  <div class="list-menu">
-    <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
-    <ul class="navbar-nav">
-      {#each $lists as list (list.id)}
-        <li
-          class="nav-link list"
-          class:active={$current.id === list.id && $component === 'show'}
-          on:click={() => goto(list)}>
-          {list.list} ({list.count})
-        </li>
-      {/each}
-    </ul>
-  </div>
-</nav>
