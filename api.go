@@ -65,7 +65,7 @@ func get(c *gin.Context) {
 		ec <- nil
 	}()
 	rows, err := db.Query(
-		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ?",
+		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT 10",
 		r.List, userID)
 	if err != nil {
 		log.Println("Failed to get completeds:", err)

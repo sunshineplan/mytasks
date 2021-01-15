@@ -45,9 +45,10 @@ CREATE VIEW completeds AS
   ORDER BY created DESC;
 
 CREATE VIEW lists AS
-  SELECT list.id, list.user_id, list, COUNT(task) count
-  FROM list LEFT JOIN task ON list.id = list_id
-  GROUP BY list ORDER BY list;
+  SELECT list.id, list.user_id, list,
+  (SELECT COUNT(task) FROM task WHERE list_id = list.id) incomplete,
+  (SELECT COUNT(task) FROM completed WHERE list_id = list.id) completed
+  FROM list ORDER BY list;
 
 DELIMITER ;;
 CREATE PROCEDURE complete_task(task_id INT)

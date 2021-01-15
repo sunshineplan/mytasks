@@ -18,7 +18,8 @@
     if (json.status) {
       if (json.id) {
         let index = $lists.findIndex((list) => list.id === $current.id);
-        $lists[index].count--;
+        $lists[index].incomplete--;
+        $lists[index].completed++;
         index = $tasks[$current.list].incomplete.findIndex(
           (i) => task.id === i.id
         );
@@ -50,7 +51,7 @@
         );
         $tasks[$current.list].incomplete.splice(index, 1);
         index = $lists.findIndex((list) => list.id === $current.id);
-        $lists[index].count--;
+        $lists[index].incomplete--;
         dispatch("refresh");
       }
     }

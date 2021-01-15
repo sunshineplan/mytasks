@@ -12,9 +12,10 @@ import (
 )
 
 type list struct {
-	ID    int    `json:"id"`
-	Name  string `json:"list"`
-	Count int    `json:"count"`
+	ID         int    `json:"id"`
+	Name       string `json:"list"`
+	Incomplete int    `json:"incomplete"`
+	Completed  int    `json:"completed"`
 }
 
 func checkList(listID, userID interface{}) bool {
@@ -27,7 +28,7 @@ func checkList(listID, userID interface{}) bool {
 }
 
 func getList(userID interface{}) ([]list, error) {
-	rows, err := db.Query("SELECT id, list, count FROM lists WHERE user_id = ?", userID)
+	rows, err := db.Query("SELECT id, list, incomplete, completed FROM lists WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func getList(userID interface{}) ([]list, error) {
 	lists := []list{}
 	for rows.Next() {
 		var list list
-		if err := rows.Scan(&list.ID, &list.Name, &list.Count); err != nil {
+		if err := rows.Scan(&list.ID, &list.Name, &list.Incomplete, &list.Completed); err != nil {
 			return nil, err
 		}
 		lists = append(lists, list)

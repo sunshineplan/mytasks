@@ -24,8 +24,14 @@
     if (json.status) {
       if (json.id) {
         (document.querySelector(".new") as Element).remove();
-        $lists = [...$lists, { id: json.id, list, count: 0 }];
-        goto({ id: json.id, list, count: 0 });
+        const newList: List = {
+          id: json.id,
+          list,
+          incomplete: 0,
+          completed: 0,
+        };
+        $lists = [...$lists, newList];
+        goto(newList);
       }
     } else {
       await fire("Error", json.message ? json.message : "Error", "error");
@@ -73,7 +79,10 @@
   };
   const handleClick = async (event: MouseEvent) => {
     const target = event.target as Element;
-    if (!target.classList.contains("new") && target.textContent !== "Add List") {
+    if (
+      !target.classList.contains("new") &&
+      target.textContent !== "Add List"
+    ) {
       const newList = document.querySelector(".new");
       if (newList) {
         const list = (newList.textContent as string).trim();
@@ -116,7 +125,7 @@
           class:active={$current.id === list.id && $component === "show"}
           on:click={() => goto(list)}
         >
-          {list.list} ({list.count})
+          {list.list} ({list.incomplete})
         </li>
       {/each}
     </ul>

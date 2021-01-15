@@ -3,7 +3,8 @@ import { writable } from 'svelte/store'
 export interface List {
     id: number
     list: string
-    count: number
+    incomplete: number
+    completed: number
     seq?: number
 }
 

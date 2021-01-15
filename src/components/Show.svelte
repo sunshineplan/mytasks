@@ -58,7 +58,7 @@
       if (json.status) {
         if (json.id) {
           const index = $lists.findIndex((list) => list.id === $current.id);
-          $lists[index].count++;
+          $lists[index].incomplete++;
           $tasks[$current.list].incomplete = [
             { id: json.id, task, created: new Date().toLocaleString() },
             ...currentIncomplete,

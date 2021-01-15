@@ -8,6 +8,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func moreCompleted(c *gin.Context) {
+	var option struct{ List, Start int }
+	if err := c.BindJSON(&option); err != nil {
+		c.String(400, "")
+		return
+	}
+
+	completed := []task{}
+	rows, err := db.Query(
+		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT ?, 30",
+		option.List, sessions.Default(c).Get("userID"), option.Start)
+	if err != nil {
+		log.Println("Failed to get completeds:", err)
+		c.String(500, "")
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var task task
+		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
+			log.Println("Failed to scan completeds:", err)
+			c.String(500, "")
+			return
+		}
+		completed = append(completed, task)
+	}
+	c.JSON(200, completed)
+}
+
 func revertCompleted(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

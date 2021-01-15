@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { fire, post } from "../misc";
+  import { fire, post, confirm } from "../misc";
   import { current, loading, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
@@ -17,7 +17,8 @@
     if (json.status) {
       if (json.id) {
         let index = $lists.findIndex((list) => list.id === $current.id);
-        $lists[index].count++;
+        $lists[index].incomplete++;
+        $lists[index].completed--;
         index = $tasks[$current.list].completed.findIndex(
           (i) => task.id === i.id
         );
@@ -38,19 +39,21 @@
   };
 
   const del = async () => {
-    $loading++;
-    const resp = await post("/completed/delete/" + task.id);
-    const json = await resp.json();
-    $loading--;
-    if (json.status) {
-      const index = $tasks[$current.list].completed.findIndex(
-        (i) => task.id === i.id
-      );
-      $tasks[$current.list].completed.splice(index, 1);
-      dispatch("refresh");
-      return;
+    if (await confirm("This completed task")) {
+      $loading++;
+      const resp = await post("/completed/delete/" + task.id);
+      const json = await resp.json();
+      $loading--;
+      if (json.status) {
+        const index = $tasks[$current.list].completed.findIndex(
+          (i) => task.id === i.id
+        );
+        $tasks[$current.list].completed.splice(index, 1);
+        dispatch("refresh");
+        return;
+      }
+      await fire("Error", "Error", "error");
     }
-    await fire("Error", "Error", "error");
   };
 </script>
 

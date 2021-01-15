@@ -2,13 +2,15 @@
   import { createEventDispatcher } from "svelte";
   import CompletedTask from "./CompletedTask.svelte";
   import { fire, confirm, post } from "../misc";
-  import { current, loading, tasks } from "../stores";
+  import { current, loading, tasks, lists } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
 
   export let show = false;
   export let completedTasks: Task[] = [];
+
+  $: index = $lists.findIndex((list) => list.id === $current.id);
 
   const expand = (event: MouseEvent) => {
     const target = event.target as Element;
@@ -22,19 +24,33 @@
       const json = await resp.json();
       $loading--;
       if (json.status) {
+        $lists[index].completed = 0;
         $tasks[$current.list].completed = [];
         dispatch("refresh");
         show = false;
       } else await fire("Error", "Error", "error");
     }
   };
+
+  const more = async () => {
+    $loading++;
+    const resp = await post("/completed/more", {
+      list: $current.id,
+      start: completedTasks.length,
+    });
+    $tasks[$current.list].completed = completedTasks.concat(await resp.json());
+    $loading--;
+    dispatch("refresh");
+  };
 </script>
 
 <div style="height: 100%">
   <div class="completed" on:click={expand}>
-    <span>Completed ({completedTasks.length})</span>
+    <span>
+      Completed ({$lists[index].completed})
+    </span>
     <i class="expand">{show ? "expand_more" : "expand_less"}</i>
-    {#if show && completedTasks.length}
+    {#if show && $lists[index].completed}
       <i class="expand delete" on:click={empty}>delete</i>
     {/if}
   </div>
@@ -43,6 +59,12 @@
       {#each completedTasks as task (task.id)}
         <CompletedTask bind:task on:refresh />
       {/each}
+      {#if completedTasks.length < $lists[index].completed}
+        <li class="list-group-item" on:click={more}>
+          <i class="icon">sync</i>
+          <span class="load">Load more</span>
+        </li>
+      {/if}
     </ul>
   {/if}
 </div>
@@ -51,6 +73,10 @@
   ul {
     cursor: default;
     overflow-y: auto;
+  }
+
+  li {
+    display: inline-flex;
   }
 
   .completed {
@@ -68,5 +94,11 @@
     font-size: 1.5rem;
     float: right;
     line-height: normal;
+  }
+
+  .load {
+    padding: 0.75rem 0;
+    color: #5f6368;
+    font-weight: bold;
   }
 </style>
