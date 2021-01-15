@@ -145,10 +145,10 @@ func reorder(c *gin.Context) {
 	ec := make(chan error, 1)
 	var oldSeq, newSeq int
 	go func() {
-		ec <- db.QueryRow("SELECT seq FROM seq WHERE task_id = ?",
+		ec <- db.QueryRow("SELECT seq FROM task_seq WHERE task_id = ?",
 			reorder.Old).Scan(&oldSeq)
 	}()
-	if err := db.QueryRow("SELECT seq FROM seq WHERE task_id = ?",
+	if err := db.QueryRow("SELECT seq FROM task_seq WHERE task_id = ?",
 		reorder.New).Scan(&newSeq); err != nil {
 		log.Println("Failed to scan new seq:", err)
 		c.String(500, "")
@@ -162,10 +162,10 @@ func reorder(c *gin.Context) {
 
 	var err error
 	if oldSeq > newSeq {
-		_, err = db.Exec("UPDATE seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND list_id = ?",
+		_, err = db.Exec("UPDATE task_seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND list_id = ?",
 			newSeq, oldSeq, reorder.List)
 	} else {
-		_, err = db.Exec("UPDATE seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND list_id = ?",
+		_, err = db.Exec("UPDATE task_seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND list_id = ?",
 			oldSeq, newSeq, reorder.List)
 	}
 	if err != nil {
@@ -173,7 +173,7 @@ func reorder(c *gin.Context) {
 		c.String(500, "")
 		return
 	}
-	if _, err := db.Exec("UPDATE seq SET seq = ? WHERE task_id = ?",
+	if _, err := db.Exec("UPDATE task_seq SET seq = ? WHERE task_id = ?",
 		newSeq, reorder.Old); err != nil {
 		log.Println("Failed to update seq:", err)
 		c.String(500, "")

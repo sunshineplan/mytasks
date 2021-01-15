@@ -27,7 +27,7 @@ CREATE TABLE completed (
   list_id INT NOT NULL
 );
 
-CREATE TABLE seq (
+CREATE TABLE task_seq (
   list_id INT NOT NULL,
   task_id INT NOT NULL,
   seq INT NOT NULL
@@ -36,7 +36,7 @@ CREATE TABLE seq (
 CREATE VIEW tasks AS
   SELECT user_id, task.id task_id, task, task.list_id, list, created, seq
   FROM task LEFT JOIN list ON task.list_id = list.id
-  LEFT JOIN seq ON task.list_id = seq.list_id AND task.id = seq.task_id
+  LEFT JOIN task_seq ON task.list_id = task_seq.list_id AND task.id = task_seq.task_id
   ORDER BY seq DESC;
 
 CREATE VIEW completeds AS
@@ -77,19 +77,19 @@ FOR EACH ROW BEGIN
     VALUES (LAST_INSERT_ID(), 'Welcome to use mytasks!');
 END;;
 
-CREATE TRIGGER add_seq AFTER INSERT ON task
+CREATE TRIGGER add_task_seq AFTER INSERT ON task
 FOR EACH ROW BEGIN
-    SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM seq WHERE list_id = new.list_id);
-    INSERT INTO seq (list_id, task_id, seq)
+    SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM task_seq WHERE list_id = new.list_id);
+    INSERT INTO task_seq (list_id, task_id, seq)
     VALUES (new.list_id, new.id, @seq);
 END;;
 
-CREATE TRIGGER reorder AFTER DELETE ON task
+CREATE TRIGGER reorder_task AFTER DELETE ON task
 FOR EACH ROW BEGIN
-    SET @seq := (SELECT seq FROM seq WHERE list_id = old.list_id AND task_id = old.id);
-    DELETE FROM seq
+    SET @seq := (SELECT seq FROM task_seq WHERE list_id = old.list_id AND task_id = old.id);
+    DELETE FROM task_seq
     WHERE list_id = old.list_id AND seq = @seq;
-    UPDATE seq SET seq = seq-1
+    UPDATE task_seq SET seq = seq-1
     WHERE list_id = old.list_id AND seq > @seq;
 END;;
 DELIMITER ;
