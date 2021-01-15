@@ -2,10 +2,10 @@
 
 installSoftware() {
     apt -qq -y install nginx default-mysql-client
-    apt -qq -y -t $(lsb_release -sc)-backports install golang-go npm
 }
 
 installMyTasks() {
+    mkdir -p /var/www/mytasks
     curl -Lo- https://github.com/sunshineplan/mytasks/releases/download/v1.0/release.tar.gz | tar zxC /var/www/mytasks
     cd /var/www/mytasks
     chmod +x mytasks

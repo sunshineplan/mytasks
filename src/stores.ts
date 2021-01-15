@@ -5,7 +5,6 @@ export interface List {
     list: string
     incomplete: number
     completed: number
-    seq?: number
 }
 
 export interface Task {
