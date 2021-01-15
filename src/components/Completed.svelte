@@ -18,7 +18,7 @@
   };
 
   const empty = async () => {
-    if (await confirm("These completed tasks")) {
+    if (await confirm("All completed tasks")) {
       $loading++;
       const resp = await post("/completed/empty/" + $current.id);
       const json = await resp.json();

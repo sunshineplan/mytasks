@@ -6,7 +6,7 @@ installSoftware() {
 }
 
 installMyTasks() {
-    curl -Lo- https://github.com/sunshineplan/mytasks/releases/download/v1.0/release.zip | tar zxC /var/www/mytasks
+    curl -Lo- https://github.com/sunshineplan/mytasks/releases/download/v1.0/release.tar.gz | tar zxC /var/www/mytasks
     cd /var/www/mytasks
     chmod +x mytasks
     ./mytasks install

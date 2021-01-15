@@ -79,9 +79,9 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Create ZIP archive
+      - name: Create GZIP archive
         run: |
-          zip -9vr release.zip public scripts mytasks config.ini.default
+          tar cvzf release.tar.gz public scripts mytasks config.ini.default
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -89,6 +89,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release.zip
-          asset_name: release.zip
-          asset_content_type: application/zip
+          asset_path: ./release.tar.gz
+          asset_name: release.tar.gz
+          asset_content_type: application/gzip
