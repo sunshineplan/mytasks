@@ -24,7 +24,7 @@
   });
 
   const onUpdate = async (event: Sortable.SortableEvent) => {
-    const resp = await post("/reorder", {
+    const resp = await post("/task/reorder", {
       list: $current.id,
       old: incompleteTasks[event.oldIndex as number].id,
       new: incompleteTasks[event.newIndex as number].id,
@@ -33,7 +33,7 @@
       const task = incompleteTasks[event.oldIndex as number];
       incompleteTasks.splice(event.oldIndex as number, 1);
       incompleteTasks.splice(event.newIndex as number, 0, task);
-    } else await fire("Error", "Failed to reorder.", "error");
+    } else await fire("Error", "Failed to reorder task", "error");
   };
 </script>
 

@@ -156,3 +156,56 @@ func deleteList(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"status": 1})
 }
+
+func reorderList(c *gin.Context) {
+	var reorder struct{ Old, New int }
+	if err := c.BindJSON(&reorder); err != nil {
+		c.String(400, "")
+		return
+	}
+
+	userID := sessions.Default(c).Get("userID")
+	if !checkList(reorder.Old, userID) || !checkList(reorder.New, userID) {
+		c.String(403, "")
+		return
+	}
+
+	ec := make(chan error, 1)
+	var oldSeq, newSeq int
+	go func() {
+		ec <- db.QueryRow("SELECT seq FROM list_seq WHERE list_id = ?",
+			reorder.Old).Scan(&oldSeq)
+	}()
+	if err := db.QueryRow("SELECT seq FROM list_seq WHERE list_id = ?",
+		reorder.New).Scan(&newSeq); err != nil {
+		log.Println("Failed to scan new seq:", err)
+		c.String(500, "")
+		return
+	}
+	if err := <-ec; err != nil {
+		log.Println("Failed to scan old seq:", err)
+		c.String(500, "")
+		return
+	}
+
+	var err error
+	if oldSeq > newSeq {
+		_, err = db.Exec("UPDATE list_seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND user_id = ?",
+			newSeq, oldSeq, userID)
+	} else {
+		_, err = db.Exec("UPDATE list_seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND user_id = ?",
+			oldSeq, newSeq, userID)
+	}
+	if err != nil {
+		log.Println("Failed to update other seq:", err)
+		c.String(500, "")
+		return
+	}
+	if _, err := db.Exec("UPDATE list_seq SET seq = ? WHERE list_id = ?",
+		newSeq, reorder.Old); err != nil {
+		log.Println("Failed to update seq:", err)
+		c.String(500, "")
+		return
+	}
+	c.String(200, "1")
+}

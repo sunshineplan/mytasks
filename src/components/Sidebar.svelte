@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Sortable from "sortablejs";
+  import { onMount } from "svelte";
   import { fire, post } from "../misc";
   import { current, component, showSidebar, loading, lists } from "../stores";
   import type { List } from "../stores";
@@ -32,26 +34,32 @@
         };
         $lists = [...$lists, newList];
         goto(newList);
+        return true;
       }
-    } else {
-      await fire("Error", json.message ? json.message : "Error", "error");
     }
+    await fire("Error", json.message ? json.message : "Error", "error");
+    return false;
   };
 
-  const addList = () => {
+  const addList = async () => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    const ul = document.querySelector("ul.navbar-nav") as Element;
-    const li = document.createElement("li");
-    li.classList.add("nav-link", "new");
-    ul.appendChild(li);
-    li.setAttribute("contenteditable", "true");
-    li.focus();
-    const range = document.createRange();
-    range.selectNodeContents(li);
-    range.collapse(false);
-    const sel = window.getSelection() as Selection;
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const newList = document.querySelector(".new");
+    let ok = true;
+    if (newList) ok = await add((newList as HTMLElement).innerText);
+    if (ok) {
+      const ul = document.querySelector("ul.navbar-nav") as Element;
+      const li = document.createElement("li");
+      li.classList.add("nav-link", "new");
+      ul.appendChild(li);
+      li.setAttribute("contenteditable", "true");
+      li.focus();
+      const range = document.createRange();
+      range.selectNodeContents(li);
+      range.collapse(false);
+      const sel = window.getSelection() as Selection;
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
   };
 
   const checkSize = () => {
@@ -81,6 +89,7 @@
     const target = event.target as Element;
     if (
       !target.classList.contains("new") &&
+      !target.classList.contains("swal2-confirm") &&
       target.textContent !== "Add List"
     ) {
       const newList = document.querySelector(".new");
@@ -90,6 +99,31 @@
         else newList.remove();
       }
     }
+  };
+
+  onMount(() => {
+    const sortable = new Sortable(
+      document.querySelector("#lists") as HTMLElement,
+      {
+        animation: 150,
+        delay: 100,
+        swapThreshold: 0.5,
+        onUpdate,
+      }
+    );
+    return () => sortable.destroy();
+  });
+
+  const onUpdate = async (event: Sortable.SortableEvent) => {
+    const resp = await post("/list/reorder", {
+      old: $lists[event.oldIndex as number].id,
+      new: $lists[event.newIndex as number].id,
+    });
+    if ((await resp.text()) == "1") {
+      const list = $lists[event.oldIndex as number];
+      $lists.splice(event.oldIndex as number, 1);
+      $lists.splice(event.newIndex as number, 0, list);
+    } else await fire("Error", "Failed to reorder list", "error");
   };
 </script>
 
@@ -118,7 +152,7 @@
 >
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
-    <ul class="navbar-nav">
+    <ul class="navbar-nav" id="lists">
       {#each $lists as list (list.id)}
         <li
           class="nav-link list"

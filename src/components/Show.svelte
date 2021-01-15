@@ -30,21 +30,24 @@
   $: $current && getTasks();
 
   const editList = async (list: string) => {
-    const index = $lists.findIndex((list) => list.id === $current.id);
     if ($current.list != list) {
-      $lists[index].list = list;
-      delete Object.assign($tasks, { [list]: currentIncomplete })[
-        $current.list
-      ];
       $loading++;
       const resp = await post("/list/edit/" + $current.id, {
         list: list.trim(),
       });
       const json = await resp.json();
       $loading--;
-      if (!json.status)
+      if (!json.status) {
         fire("Error", json.message ? json.message : "Error", "error");
+        return false;
+      }
+      const index = $lists.findIndex((list) => list.id === $current.id);
+      $lists[index].list = list;
+      delete Object.assign($tasks, { [list]: currentIncomplete })[
+        $current.list
+      ];
     }
+    return true;
   };
   const add = async (task: string) => {
     if (task.trim()) {
@@ -122,8 +125,7 @@
   const listKeydown = async (event: KeyboardEvent) => {
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
-      await editList((event.target as HTMLElement).innerText);
-      editable = false;
+      editable = !(await editList((event.target as HTMLElement).innerText));
     }
   };
   const listClick = async () => {
@@ -173,12 +175,12 @@
     if (
       target.id !== "list" &&
       !target.classList.contains("edit") &&
+      !target.classList.contains("swal2-confirm") &&
       editable
     ) {
-      await editList(
+      editable = !(await editList(
         (document.querySelector("#list") as HTMLElement).innerText
-      );
-      editable = false;
+      ));
     }
   };
 </script>

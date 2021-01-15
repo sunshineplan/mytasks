@@ -13,14 +13,13 @@ CREATE TABLE list (
   user_id INT NOT NULL
 );
 
-CREATE TABLE task (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  task VARCHAR(1000) NOT NULL,
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  list_id INT NOT NULL
+CREATE TABLE list_seq (
+  user_id INT NOT NULL,
+  list_id INT NOT NULL,
+  seq INT NOT NULL
 );
 
-CREATE TABLE completed (
+CREATE TABLE task (
   id INT PRIMARY KEY AUTO_INCREMENT,
   task VARCHAR(1000) NOT NULL,
   created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,6 +32,21 @@ CREATE TABLE task_seq (
   seq INT NOT NULL
 );
 
+CREATE TABLE completed (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  task VARCHAR(1000) NOT NULL,
+  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  list_id INT NOT NULL
+);
+
+CREATE VIEW lists AS
+  SELECT list.id, list.user_id, list, seq,
+  (SELECT COUNT(task) FROM task WHERE list_id = list.id) incomplete,
+  (SELECT COUNT(task) FROM completed WHERE list_id = list.id) completed
+  FROM list
+  LEFT JOIN list_seq ON list.user_id = list_seq.user_id AND list.id = list_seq.list_id
+  ORDER BY seq;
+
 CREATE VIEW tasks AS
   SELECT user_id, task.id task_id, task, task.list_id, list, created, seq
   FROM task LEFT JOIN list ON task.list_id = list.id
@@ -44,17 +58,12 @@ CREATE VIEW completeds AS
   FROM completed LEFT JOIN list ON completed.list_id = list.id
   ORDER BY created DESC;
 
-CREATE VIEW lists AS
-  SELECT list.id, list.user_id, list,
-  (SELECT COUNT(task) FROM task WHERE list_id = list.id) incomplete,
-  (SELECT COUNT(task) FROM completed WHERE list_id = list.id) completed
-  FROM list ORDER BY list;
-
 DELIMITER ;;
 CREATE PROCEDURE complete_task(task_id INT)
 BEGIN
     START TRANSACTION;
-    INSERT INTO completed (task, list_id) SELECT task, list_id FROM task WHERE id = task_id;
+    INSERT INTO completed (task, list_id)
+    SELECT task, list_id FROM task WHERE id = task_id;
     DELETE FROM task WHERE id = task_id;
     COMMIT;
     SELECT LAST_INSERT_ID();
@@ -63,7 +72,8 @@ END;;
 CREATE PROCEDURE revert_completed(task_id INT)
 BEGIN
     START TRANSACTION;
-    INSERT INTO task (task, list_id) SELECT task, list_id FROM completed WHERE id = task_id;
+    INSERT INTO task (task, list_id)
+    SELECT task, list_id FROM completed WHERE id = task_id;
     DELETE FROM completed WHERE id = task_id;
     COMMIT;
     SELECT LAST_INSERT_ID();
@@ -77,11 +87,27 @@ FOR EACH ROW BEGIN
     VALUES (LAST_INSERT_ID(), 'Welcome to use mytasks!');
 END;;
 
+CREATE TRIGGER add_list_seq AFTER INSERT ON list
+FOR EACH ROW BEGIN
+    SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM list_seq WHERE user_id = new.user_id);
+    INSERT INTO list_seq (user_id, list_id, seq)
+    VALUES (new.user_id, new.id, @seq);
+END;;
+
 CREATE TRIGGER add_task_seq AFTER INSERT ON task
 FOR EACH ROW BEGIN
     SET @seq := (SELECT IFNULL(MAX(seq)+1, 1) FROM task_seq WHERE list_id = new.list_id);
     INSERT INTO task_seq (list_id, task_id, seq)
     VALUES (new.list_id, new.id, @seq);
+END;;
+
+CREATE TRIGGER reorder_list AFTER DELETE ON list
+FOR EACH ROW BEGIN
+    SET @seq := (SELECT seq FROM list_seq WHERE user_id = old.user_id AND list_id = old.id);
+    DELETE FROM list_seq
+    WHERE user_id = old.user_id AND seq = @seq;
+    UPDATE list_seq SET seq = seq-1
+    WHERE user_id = old.user_id AND seq > @seq;
 END;;
 
 CREATE TRIGGER reorder_task AFTER DELETE ON task

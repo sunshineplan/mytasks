@@ -129,7 +129,7 @@ func deleteTask(c *gin.Context) {
 	c.String(403, "")
 }
 
-func reorder(c *gin.Context) {
+func reorderTask(c *gin.Context) {
 	var reorder struct{ List, Old, New int }
 	if err := c.BindJSON(&reorder); err != nil {
 		c.String(400, "")
