@@ -51,6 +51,18 @@
       const li = document.createElement("li");
       li.classList.add("nav-link", "new");
       ul.appendChild(li);
+      li.addEventListener("keydown", async (event) => {
+        const target = event.target as Element;
+        const list = (target.textContent as string).trim();
+        if (event.key == "Enter") {
+          event.preventDefault();
+          if (list) await add(list);
+          else target.remove();
+        } else if (event.key == "Escape") {
+          if (list) target.textContent = "";
+          else target.remove();
+        }
+      });
       li.setAttribute("contenteditable", "true");
       li.focus();
       const range = document.createRange();
@@ -68,6 +80,8 @@
   };
   const handleKeydown = async (event: KeyboardEvent) => {
     if (event.key == "ArrowUp" || event.key == "ArrowDown") {
+      const newList = document.querySelector(".new");
+      if (newList) newList.remove();
       const len = $lists.length;
       const index = $lists.findIndex((list) => list.id === $current.id);
       if ($current.id && $component === "show")
@@ -75,14 +89,6 @@
           if (index > 0) goto($lists[index - 1]);
         } else if (event.key == "ArrowDown")
           if (index < len - 1) goto($lists[index + 1]);
-    } else if (event.key == "Enter" || event.key == "Escape") {
-      const newList = document.querySelector(".new");
-      if (newList) {
-        event.preventDefault();
-        const list = (newList.textContent as string).trim();
-        if (list) await add(list);
-        else newList.remove();
-      }
     }
   };
   const handleClick = async (event: MouseEvent) => {

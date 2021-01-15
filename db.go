@@ -11,14 +11,9 @@ var dbConfig mysql.Config
 var db *sql.DB
 
 func initDB() (err error) {
-	//if err = meta.Get("mytasks_mysql", &dbConfig); err != nil {
-	//	return
-	//}
-	dbConfig.Server = "localhost"
-	dbConfig.Port = 3306
-	dbConfig.Database = "mytasks"
-	dbConfig.Username = "mytasks"
-	dbConfig.Password = "123456ab"
+	if err = meta.Get("mytasks_mysql", &dbConfig); err != nil {
+		return
+	}
 
 	db, err = dbConfig.Open()
 	if err != nil {

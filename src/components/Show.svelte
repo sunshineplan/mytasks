@@ -27,7 +27,7 @@
     refresh();
   };
 
-  $: $current && getTasks();
+  $: $current, getTasks(), (editable = false);
 
   const editList = async (list: string) => {
     if ($current.list != list) {
@@ -123,9 +123,21 @@
   };
 
   const listKeydown = async (event: KeyboardEvent) => {
-    if (event.key == "Enter" || event.key == "Escape") {
+    const target = event.target as Element;
+    const list = (target.textContent as string).trim();
+    if (event.key == "Enter") {
       event.preventDefault();
-      editable = !(await editList((event.target as HTMLElement).innerText));
+      if (list) editable = !(await editList(list));
+      else {
+        target.textContent = $current.list;
+        editable = false;
+      }
+    } else if (event.key == "Escape") {
+      if (list) target.textContent = "";
+      else {
+        target.textContent = $current.list;
+        editable = false;
+      }
     }
   };
   const listClick = async () => {
@@ -178,9 +190,12 @@
       !target.classList.contains("swal2-confirm") &&
       editable
     ) {
-      editable = !(await editList(
-        (document.querySelector("#list") as HTMLElement).innerText
-      ));
+      const list = (document.querySelector("#list") as Element).textContent;
+      if (list && list.trim()) editable = !(await editList(list));
+      else {
+        target.textContent = $current.list;
+        editable = false;
+      }
     }
   };
 </script>
@@ -232,6 +247,7 @@
   .edit {
     font-size: 1.25rem;
     color: #007bff;
+    padding: 0;
   }
 
   .edit:hover {
@@ -240,5 +256,12 @@
 
   .editable {
     text-decoration: underline;
+  }
+
+  #list {
+    outline: 0;
+    display: inline-block;
+    min-width: 10px;
+    padding-right: 1rem;
   }
 </style>
