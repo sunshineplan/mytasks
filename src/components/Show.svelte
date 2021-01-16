@@ -12,6 +12,7 @@
   let showCompleted = false;
 
   const refresh = () => {
+    $lists = $lists;
     currentIncomplete = $tasks[$current.list].incomplete;
     currentCompleted = $tasks[$current.list].completed;
   };
