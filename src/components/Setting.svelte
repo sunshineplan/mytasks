@@ -24,7 +24,8 @@
             "Your password has changed. Please Re-login!",
             "success"
           );
-          username.set("");
+          $username = "";
+          $component = "show";
         } else {
           await fire("Error", json.message, "error");
           if (json.error == 1) password = "";
@@ -38,7 +39,7 @@
   };
 
   const cancel = () => {
-    component.set("tasks");
+    $component = "show";
   };
 
   const handleEscape = (event: KeyboardEvent) => {
