@@ -9,7 +9,6 @@ installMyTasks() {
     curl -Lo- https://github.com/sunshineplan/mytasks/releases/download/v1.0/release.tar.gz | tar zxC /var/www/mytasks
     cd /var/www/mytasks
     chmod +x mytasks
-    ./mytasks install
 }
 
 configMyTasks() {
@@ -32,6 +31,7 @@ configMyTasks() {
     sed -i "s,\$log,$log," /var/www/mytasks/config.ini
     sed -i "s/\$host/$host/" /var/www/mytasks/config.ini
     sed -i "s/\$port/$port/" /var/www/mytasks/config.ini
+    ./mytasks install
     service mytasks start
 }
 
