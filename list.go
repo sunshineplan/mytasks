@@ -135,7 +135,6 @@ func editList(c *gin.Context) {
 }
 
 func deleteList(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Println("Failed to get id param:", err)
@@ -143,14 +142,13 @@ func deleteList(c *gin.Context) {
 		return
 	}
 
-	if _, err := db.Exec("DELETE FROM list WHERE id = ? and user_id = ?",
-		id, userID); err != nil {
-		log.Println("Failed to delete list:", err)
-		c.String(500, "")
+	if !checkList(id, sessions.Default(c).Get("userID")) {
+		c.String(403, "")
 		return
 	}
-	if _, err := db.Exec("DELETE FROM task WHERE list_id = ?", id); err != nil {
-		log.Println("Failed to remove deleted list for task:", err)
+
+	if _, err := db.Exec("CALL delete_list(?)", id); err != nil {
+		log.Println("Failed to deleted list:", err)
 		c.String(500, "")
 		return
 	}
@@ -165,44 +163,14 @@ func reorderList(c *gin.Context) {
 	}
 
 	userID := sessions.Default(c).Get("userID")
-	if !checkList(reorder.Old, userID) || !checkList(reorder.New, userID) {
+	if !checkList(reorder.Old, userID) ||
+		!checkList(reorder.New, userID) {
 		c.String(403, "")
 		return
 	}
 
-	ec := make(chan error, 1)
-	var oldSeq, newSeq int
-	go func() {
-		ec <- db.QueryRow("SELECT seq FROM list_seq WHERE list_id = ?",
-			reorder.Old).Scan(&oldSeq)
-	}()
-	if err := db.QueryRow("SELECT seq FROM list_seq WHERE list_id = ?",
-		reorder.New).Scan(&newSeq); err != nil {
-		log.Println("Failed to scan new seq:", err)
-		c.String(500, "")
-		return
-	}
-	if err := <-ec; err != nil {
-		log.Println("Failed to scan old seq:", err)
-		c.String(500, "")
-		return
-	}
-
-	var err error
-	if oldSeq > newSeq {
-		_, err = db.Exec("UPDATE list_seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND user_id = ?",
-			newSeq, oldSeq, userID)
-	} else {
-		_, err = db.Exec("UPDATE list_seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND user_id = ?",
-			oldSeq, newSeq, userID)
-	}
-	if err != nil {
-		log.Println("Failed to update other seq:", err)
-		c.String(500, "")
-		return
-	}
-	if _, err := db.Exec("UPDATE list_seq SET seq = ? WHERE list_id = ?",
-		newSeq, reorder.Old); err != nil {
+	if _, err := db.Exec("CALL list_reorder(?, ?, ?)",
+		userID, reorder.New, reorder.Old); err != nil {
 		log.Println("Failed to update seq:", err)
 		c.String(500, "")
 		return

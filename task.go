@@ -137,45 +137,15 @@ func reorderTask(c *gin.Context) {
 	}
 
 	userID := sessions.Default(c).Get("userID")
-	if !checkAll(reorder.Old, reorder.List, userID) || !checkAll(reorder.New, reorder.List, userID) {
+	if !checkAll(reorder.Old, reorder.List, userID) ||
+		!checkAll(reorder.New, reorder.List, userID) {
 		c.String(403, "")
 		return
 	}
 
-	ec := make(chan error, 1)
-	var oldSeq, newSeq int
-	go func() {
-		ec <- db.QueryRow("SELECT seq FROM task_seq WHERE task_id = ?",
-			reorder.Old).Scan(&oldSeq)
-	}()
-	if err := db.QueryRow("SELECT seq FROM task_seq WHERE task_id = ?",
-		reorder.New).Scan(&newSeq); err != nil {
-		log.Println("Failed to scan new seq:", err)
-		c.String(500, "")
-		return
-	}
-	if err := <-ec; err != nil {
-		log.Println("Failed to scan old seq:", err)
-		c.String(500, "")
-		return
-	}
-
-	var err error
-	if oldSeq > newSeq {
-		_, err = db.Exec("UPDATE task_seq SET seq = seq+1 WHERE seq >= ? AND seq < ? AND list_id = ?",
-			newSeq, oldSeq, reorder.List)
-	} else {
-		_, err = db.Exec("UPDATE task_seq SET seq = seq-1 WHERE seq > ? AND seq <= ? AND list_id = ?",
-			oldSeq, newSeq, reorder.List)
-	}
-	if err != nil {
-		log.Println("Failed to update other seq:", err)
-		c.String(500, "")
-		return
-	}
-	if _, err := db.Exec("UPDATE task_seq SET seq = ? WHERE task_id = ?",
-		newSeq, reorder.Old); err != nil {
-		log.Println("Failed to update seq:", err)
+	if _, err := db.Exec("CALL task_reorder(?, ?, ?)",
+		reorder.List, reorder.New, reorder.Old); err != nil {
+		log.Println("Failed to task reorder:", err)
 		c.String(500, "")
 		return
 	}
