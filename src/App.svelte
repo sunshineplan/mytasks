@@ -48,11 +48,11 @@
     <div class="navbar-nav flex-row"><span class="nav-link">Log In</span></div>
   {/if}
 </nav>
-{#if !$user}
-  <Login on:info={getInfo} />
-{:else}
-  <Sidebar />
-  {#await promise then _}
+{#await promise then _}
+  {#if !$user}
+    <Login on:info={getInfo} />
+  {:else}
+    <Sidebar />
     <div
       class="content"
       style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
@@ -60,8 +60,8 @@
     >
       <svelte:component this={components[$component]} />
     </div>
-  {/await}
-{/if}
+  {/if}
+{/await}
 <div class="loading" hidden={!$loading}>
   <div class="sk-wave sk-center">
     <div class="sk-wave-rect" />
