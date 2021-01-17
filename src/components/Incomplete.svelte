@@ -1,10 +1,12 @@
 <script lang="ts">
   import Sortable from "sortablejs";
-  import { onMount } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import IncompleteTask from "./IncompleteTask.svelte";
   import { fire, post } from "../misc";
   import { current } from "../stores";
   import type { Task } from "../stores";
+
+  const dispatch = createEventDispatcher();
 
   export let showCompleted = false;
   export let selected = 0;
@@ -33,7 +35,10 @@
       const task = incompleteTasks[event.oldIndex as number];
       incompleteTasks.splice(event.oldIndex as number, 1);
       incompleteTasks.splice(event.newIndex as number, 0, task);
-    } else await fire("Error", "Failed to reorder task", "error");
+    } else {
+      await fire("Error", "Failed to reorder task", "error");
+      dispatch("reload");
+    }
   };
 </script>
 
@@ -45,7 +50,7 @@
   id="tasks"
 >
   {#each incompleteTasks as task (task.id)}
-    <IncompleteTask bind:selected bind:task on:refresh on:edit />
+    <IncompleteTask bind:selected bind:task on:refresh on:edit on:reload />
   {/each}
 </ul>
 

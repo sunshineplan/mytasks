@@ -12,10 +12,10 @@
   const revert = async () => {
     $loading++;
     const resp = await post("/completed/revert/" + task.id);
-    const json = await resp.json();
     $loading--;
-    if (json.status) {
-      if (json.id) {
+    if (resp.ok) {
+      const json = await resp.json();
+      if (json.status && json.id) {
         let index = $lists.findIndex((list) => list.id === $current.id);
         $lists[index].incomplete++;
         $lists[index].completed--;
@@ -36,6 +36,7 @@
       }
     }
     await fire("Error", "Error", "error");
+    dispatch("reload");
   };
 
   const del = async () => {
@@ -53,6 +54,7 @@
         return;
       }
       await fire("Error", "Error", "error");
+      dispatch("reload");
     }
   };
 </script>

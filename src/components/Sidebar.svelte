@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
   import { fire, post } from "../misc";
   import { current, component, showSidebar, loading, lists } from "../stores";
   import type { List } from "../stores";
+
+  const dispatch = createEventDispatcher();
 
   let hover = false;
   let smallSize = window.innerWidth <= 900;
@@ -21,10 +24,11 @@
   const add = async (list: string) => {
     $loading++;
     const resp = await post("/list/add", { list: list.trim() });
-    const json = await resp.json();
     $loading--;
-    if (json.status) {
-      if (json.id) {
+    let json: any = {};
+    if (resp.ok) {
+      json = await resp.json();
+      if (json.id && json.status) {
         (document.querySelector(".new") as Element).remove();
         const newList: List = {
           id: json.id,
@@ -38,6 +42,7 @@
       }
     }
     await fire("Error", json.message ? json.message : "Error", "error");
+    dispatch("reload");
     return false;
   };
 
@@ -129,7 +134,10 @@
       const list = $lists[event.oldIndex as number];
       $lists.splice(event.oldIndex as number, 1);
       $lists.splice(event.newIndex as number, 0, list);
-    } else await fire("Error", "Failed to reorder list", "error");
+    } else {
+      await fire("Error", "Failed to reorder list", "error");
+      dispatch("reload");
+    }
   };
 </script>
 

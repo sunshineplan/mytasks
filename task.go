@@ -98,7 +98,7 @@ func completeTask(c *gin.Context) {
 
 	if checkTask(id, sessions.Default(c).Get("userID")) {
 		var insertID int
-		if err := db.QueryRow("CALL complete_task(?)", id).Scan(&insertID); err != nil {
+		if err := db.QueryRow("CALL complete_task(?)", id).Scan(&insertID); err != nil || insertID == 0 {
 			log.Println("Failed to complete task:", err)
 			c.String(500, "")
 			return

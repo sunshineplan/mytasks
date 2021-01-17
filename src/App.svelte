@@ -52,13 +52,13 @@
   {#if !$user}
     <Login on:info={getInfo} />
   {:else}
-    <Sidebar />
+    <Sidebar on:reload={getInfo} />
     <div
       class="content"
       style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
       on:mousedown={() => ($showSidebar = false)}
     >
-      <svelte:component this={components[$component]} />
+      <svelte:component this={components[$component]} on:reload={getInfo} />
     </div>
   {/if}
 {/await}

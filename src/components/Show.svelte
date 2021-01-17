@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post } from "../misc";
   import { current, loading, lists, tasks } from "../stores";
   import type { Task } from "../stores";
+
+  const dispatch = createEventDispatcher();
 
   let currentIncomplete: Task[] = [];
   let currentCompleted: Task[] = [];
@@ -17,9 +20,14 @@
     currentCompleted = $tasks[$current.list].completed;
   };
 
-  const getTasks = async () => {
-    showCompleted = false;
-    if (!$tasks.hasOwnProperty($current.list)) {
+  const reload = async () => {
+    await getTasks(true);
+    dispatch("reload");
+  };
+
+  const getTasks = async (force?: boolean) => {
+    if (!force) showCompleted = false;
+    if (!$tasks.hasOwnProperty($current.list) || force) {
       $loading++;
       const resp = await post("/get", { list: $current.id });
       $tasks[$current.list] = await resp.json();
@@ -36,19 +44,23 @@
       const resp = await post("/list/edit/" + $current.id, {
         list: list.trim(),
       });
-      const json = await resp.json();
       $loading--;
-      if (!json.status) {
-        fire("Error", json.message ? json.message : "Error", "error");
-        return false;
+      let json: any = {};
+      if (resp.ok) {
+        json = await resp.json();
+        if (json.status) {
+          const index = $lists.findIndex((list) => list.id === $current.id);
+          $lists[index].list = list;
+          delete Object.assign($tasks, { [list]: currentIncomplete })[
+            $current.list
+          ];
+          return true;
+        }
       }
-      const index = $lists.findIndex((list) => list.id === $current.id);
-      $lists[index].list = list;
-      delete Object.assign($tasks, { [list]: currentIncomplete })[
-        $current.list
-      ];
+      await fire("Error", json.message ? json.message : "Error", "error");
+      dispatch("reload");
+      return false;
     }
-    return true;
   };
   const add = async (task: string) => {
     if (task.trim()) {
@@ -57,10 +69,11 @@
         task: task.trim(),
         list: $current.id,
       });
-      const json = await resp.json();
       $loading--;
-      if (json.status) {
-        if (json.id) {
+      let json: any = {};
+      if (resp.ok) {
+        json = await resp.json();
+        if (json.status && json.id) {
           const index = $lists.findIndex((list) => list.id === $current.id);
           $lists[index].incomplete++;
           $tasks[$current.list].incomplete = [
@@ -70,9 +83,10 @@
           currentIncomplete = $tasks[$current.list].incomplete;
           const selected = document.querySelector(".selected");
           if (selected) selected.remove();
+          return;
         }
-      } else
-        await fire("Error", json.message ? json.message : "Error", "error");
+      }
+      await fire("Error", "Error", "error");
     } else {
       const selected = document.querySelector(".selected");
       if (selected) selected.remove();
@@ -87,10 +101,8 @@
         task: task.trim(),
         list: $current.id,
       });
-      const json = await resp.json();
       $loading--;
-      if (!json.status)
-        fire("Error", json.message ? json.message : "Error", "error");
+      if (!resp.ok) await fire("Error", "Error", "error");
     }
   };
 
@@ -149,12 +161,14 @@
         $loading++;
         const resp = await post("/list/delete/" + $current.id);
         $loading--;
-        if (!resp.ok) await fire("Error", await resp.text(), "error");
-        else {
+        if (resp.ok) {
           const index = $lists.findIndex((list) => list.id === $current.id);
           $lists.splice(index, 1);
           delete $tasks[$current.list];
           $current = $lists[0];
+        } else {
+          await fire("Error", await resp.text(), "error");
+          dispatch("reload");
         }
       }
     } else {
@@ -232,11 +246,13 @@
     bind:incompleteTasks={currentIncomplete}
     on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
     on:refresh={refresh}
+    on:reload={reload}
   />
   <Completed
     bind:show={showCompleted}
     bind:completedTasks={currentCompleted}
     on:refresh={refresh}
+    on:reload={reload}
   />
 </div>
 

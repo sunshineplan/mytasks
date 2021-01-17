@@ -57,7 +57,7 @@
   {#if show}
     <ul class="list-group list-group-flush" style="height:calc(50% - 85px)">
       {#each completedTasks as task (task.id)}
-        <CompletedTask bind:task on:refresh />
+        <CompletedTask bind:task on:refresh on:reload />
       {/each}
       {#if completedTasks.length < $lists[index].completed}
         <li class="list-group-item" on:click={more}>

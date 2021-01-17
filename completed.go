@@ -49,7 +49,7 @@ func revertCompleted(c *gin.Context) {
 	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
 		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
 		var insertID int
-		if err := db.QueryRow("CALL revert_completed(?)", id).Scan(&insertID); err != nil {
+		if err := db.QueryRow("CALL revert_completed(?)", id).Scan(&insertID); err != nil || insertID == 0 {
 			log.Println("Failed to revert completed task:", err)
 			c.String(500, "")
 			return
