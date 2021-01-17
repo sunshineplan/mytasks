@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"strconv"
@@ -61,25 +62,32 @@ func addList(c *gin.Context) {
 	case len(list.Name) > 15:
 		message = "List name exceeded length limit."
 	default:
-		result, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)",
-			list.Name, userID)
-		if err != nil {
-			if strings.Contains(err.Error(), "Duplicate") {
-				message = fmt.Sprintf("List %s is already existed.", list.Name)
-				break
+		var exist string
+		if err := db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ?",
+			list.Name, userID).Scan(&exist); err == nil {
+			message = fmt.Sprintf("List %s is already existed.", list.Name)
+		} else {
+			if err == sql.ErrNoRows {
+				result, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)",
+					list.Name, userID)
+				if err != nil {
+					log.Println("Failed to add list:", err)
+					c.String(500, "")
+					return
+				}
+				id, err := result.LastInsertId()
+				if err != nil {
+					log.Println("Failed to get last insert id:", err)
+					c.String(500, "")
+					return
+				}
+				c.JSON(200, gin.H{"status": 1, "id": id})
+				return
 			}
-			log.Println("Failed to add list:", err)
+			log.Println("Failed to scan list:", err)
 			c.String(500, "")
 			return
 		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			log.Println("Failed to get last insert id:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1, "id": id})
-		return
 	}
 	c.JSON(200, gin.H{"status": 0, "message": message, "error": 1})
 }
@@ -92,7 +100,8 @@ func editList(c *gin.Context) {
 		return
 	}
 
-	if !checkList(id, sessions.Default(c).Get("userID")) {
+	userID := sessions.Default(c).Get("userID")
+	if !checkList(id, userID) {
 		c.String(403, "")
 		return
 	}
@@ -104,19 +113,25 @@ func editList(c *gin.Context) {
 	}
 	list.Name = strings.TrimSpace(list.Name)
 
+	var exist string
+	err = db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ? AND id != ?",
+		list.Name, userID, id).Scan(&exist)
+
 	var message string
 	switch {
 	case list.Name == "":
 		message = "New list name is empty."
 	case len(list.Name) > 15:
 		message = "List name exceeded length limit."
+	case err == nil:
+		message = fmt.Sprintf("List %s is already existed.", list.Name)
+	case err != sql.ErrNoRows:
+		log.Println("Failed to scan list:", err)
+		c.String(500, "")
+		return
 	default:
-		if _, err := db.Exec("UPDATE list SET list = ? WHERE id = ?",
-			list.Name, id); err != nil {
-			if strings.Contains(err.Error(), "Duplicate") {
-				message = fmt.Sprintf("List %s is already existed.", list.Name)
-				break
-			}
+		if _, err := db.Exec("UPDATE list SET list = ? WHERE id = ? AND user_id = ?",
+			list.Name, id, userID); err != nil {
 			log.Println("Failed to edit list:", err)
 			c.String(500, "")
 			return
