@@ -8,6 +8,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func checkCompleted(taskID, userID interface{}) bool {
+	var exist string
+	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
+		taskID, userID).Scan(&exist); err == nil {
+		return true
+	}
+	return false
+}
+
 func moreCompleted(c *gin.Context) {
 	var option struct{ List, Start int }
 	if err := c.BindJSON(&option); err != nil {
@@ -15,10 +24,16 @@ func moreCompleted(c *gin.Context) {
 		return
 	}
 
+	userID := sessions.Default(c).Get("userID")
+	if !checkList(option.List, userID) {
+		c.String(403, "")
+		return
+	}
+
 	completed := []task{}
 	rows, err := db.Query(
 		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT ?, 30",
-		option.List, sessions.Default(c).Get("userID"), option.Start)
+		option.List, userID, option.Start)
 	if err != nil {
 		log.Println("Failed to get completeds:", err)
 		c.String(500, "")
@@ -45,9 +60,7 @@ func revertCompleted(c *gin.Context) {
 		return
 	}
 
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
-		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
+	if checkCompleted(id, sessions.Default(c).Get("userID")) {
 		var insertID int
 		if err := db.QueryRow("CALL revert_completed(?)", id).Scan(&insertID); err != nil || insertID == 0 {
 			log.Println("Failed to revert completed task:", err)
@@ -68,9 +81,7 @@ func deleteCompleted(c *gin.Context) {
 		return
 	}
 
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
-		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
+	if checkCompleted(id, sessions.Default(c).Get("userID")) {
 		if _, err := db.Exec("DELETE FROM completed WHERE id = ?", id); err != nil {
 			log.Println("Failed to delete completed task:", err)
 			c.String(500, "")
@@ -90,9 +101,7 @@ func emptyCompleted(c *gin.Context) {
 		return
 	}
 
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE list_id = ? AND user_id = ?",
-		id, sessions.Default(c).Get("userID")).Scan(&exist); err == nil {
+	if checkCompleted(id, sessions.Default(c).Get("userID")) {
 		if _, err := db.Exec("DELETE FROM completed WHERE list_id = ?", id); err != nil {
 			log.Println("Failed to empty completed task:", err)
 			c.String(500, "")

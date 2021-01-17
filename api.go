@@ -35,12 +35,18 @@ func info(c *gin.Context) {
 }
 
 func get(c *gin.Context) {
-	var r task
-	if err := c.BindJSON(&r); err != nil {
+	var option task
+	if err := c.BindJSON(&option); err != nil {
 		c.String(400, "")
 		return
 	}
+
 	userID := sessions.Default(c).Get("userID")
+	if !checkList(option.List, userID) {
+		c.String(403, "")
+		return
+	}
+
 	incomplete := []task{}
 	completed := []task{}
 
@@ -48,7 +54,7 @@ func get(c *gin.Context) {
 	go func() {
 		rows, err := db.Query(
 			"SELECT task_id, task, list_id, created FROM tasks WHERE list_id = ? AND user_id = ?",
-			r.List, userID)
+			option.List, userID)
 		if err != nil {
 			ec <- err
 			return
@@ -66,7 +72,7 @@ func get(c *gin.Context) {
 	}()
 	rows, err := db.Query(
 		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT 10",
-		r.List, userID)
+		option.List, userID)
 	if err != nil {
 		log.Println("Failed to get completeds:", err)
 		c.String(500, "")
