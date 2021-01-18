@@ -54,13 +54,13 @@
           delete Object.assign($tasks, { [list]: currentIncomplete })[
             $current.list
           ];
-          return true;
         }
       }
       await fire("Error", json.message ? json.message : "Error", "error");
       dispatch("reload");
       return false;
     }
+    return true;
   };
   const add = async (task: string) => {
     if (task.trim()) {
