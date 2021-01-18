@@ -64,12 +64,14 @@
   <div class="form" class:was-validated={validated}>
     <div class="form-group">
       <label for="password">Current Password</label>
+      <!-- svelte-ignore a11y-autofocus -->
       <input
         class="form-control"
         type="password"
         bind:value={password}
         id="password"
         maxlength="20"
+        autofocus
         required
       />
       <div class="invalid-feedback">This field is required.</div>

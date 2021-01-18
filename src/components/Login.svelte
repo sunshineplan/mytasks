@@ -51,12 +51,14 @@
   <div class="login">
     <div class="form-group">
       <label for="username">Username</label>
+      <!-- svelte-ignore a11y-autofocus -->
       <input
         class="form-control"
         bind:value={username}
         id="username"
         maxlength="20"
         placeholder="Username"
+        autofocus
         required
       />
     </div>
