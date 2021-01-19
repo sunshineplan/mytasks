@@ -60,7 +60,6 @@ jobs:
           npm run build
           go mod download
           go build -ldflags "-s -w"
-          tar cvzf release.tar.gz public scripts mytasks config.ini.default
           echo "::set-output name=date::$(TZ=CST date +'%Y-%m-%d')"
 
       - name: Create Release
@@ -74,6 +73,10 @@ jobs:
           body: ${{ steps.build.outputs.date }}
           draft: false
           prerelease: false
+
+      - name: Zip release files
+        run: |
+          tar cvzf release.tar.gz public scripts mytasks config.ini.default
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
