@@ -22,8 +22,9 @@
   };
 
   const add = async (list: string) => {
+    list = list.trim();
     $loading++;
-    const resp = await post("/list/add", { list: list.trim() });
+    const resp = await post("/list/add", { list });
     $loading--;
     let json: any = {};
     if (resp.ok) {
@@ -117,7 +118,7 @@
       document.querySelector("#lists") as HTMLElement,
       {
         animation: 150,
-        delay: 100,
+        delay: 200,
         swapThreshold: 0.5,
         onUpdate,
       }

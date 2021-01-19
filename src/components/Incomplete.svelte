@@ -17,7 +17,7 @@
       document.querySelector("#tasks") as HTMLElement,
       {
         animation: 150,
-        delay: 100,
+        delay: 200,
         swapThreshold: 0.5,
         onUpdate,
       }

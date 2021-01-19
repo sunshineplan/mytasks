@@ -63,9 +63,11 @@
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
+      const target = event.target as Element;
+      target.textContent = (target.textContent as string).trim();
       dispatch("edit", {
         id: task.id,
-        task: (event.target as Element).textContent,
+        task: target.textContent,
       });
       selected = 0;
     }
@@ -88,12 +90,14 @@
       const sel = window.getSelection() as Selection;
       sel.removeAllRanges();
       sel.addRange(range);
-      const selectedTarget = document.querySelector(".selected>.task");
-      if (selectedTarget)
+      const selectedTask = document.querySelector(".selected>.task");
+      if (selectedTask) {
+        selectedTask.textContent = (selectedTask.textContent as string).trim();
         dispatch("edit", {
           id: selected,
-          task: (selectedTarget as Element).textContent,
+          task: selectedTask.textContent,
         });
+      }
       selected = task.id;
     }
   };

@@ -39,11 +39,10 @@
   $: $current, getTasks(), (editable = false);
 
   const editList = async (list: string) => {
+    list = list.trim();
     if ($current.list != list) {
       $loading++;
-      const resp = await post("/list/edit/" + $current.id, {
-        list: list.trim(),
-      });
+      const resp = await post("/list/edit/" + $current.id, { list });
       $loading--;
       let json: any = {};
       if (resp.ok) {
@@ -54,6 +53,8 @@
           delete Object.assign($tasks, { [list]: currentIncomplete })[
             $current.list
           ];
+          $current = $lists[index];
+          return true;
         }
       }
       await fire("Error", json.message ? json.message : "Error", "error");
@@ -63,12 +64,10 @@
     return true;
   };
   const add = async (task: string) => {
-    if (task.trim()) {
+    task = task.trim();
+    if (task) {
       $loading++;
-      const resp = await post("/task/add", {
-        task: task.trim(),
-        list: $current.id,
-      });
+      const resp = await post("/task/add", { task, list: $current.id });
       $loading--;
       let json: any = {};
       if (resp.ok) {
@@ -93,23 +92,23 @@
     }
   };
   const edit = async (id: number, task: string) => {
+    task = task.trim();
     const index = currentIncomplete.findIndex((task) => task.id === id);
     if (currentIncomplete[index].task != task) {
       currentIncomplete[index].task = task;
       $loading++;
-      const resp = await post("/task/edit/" + id, {
-        task: task.trim(),
-        list: $current.id,
-      });
+      const resp = await post("/task/edit/" + id, { task, list: $current.id });
       $loading--;
       if (!resp.ok) await fire("Error", "Error", "error");
     }
   };
 
   const addTask = async () => {
-    const selectedTarget = document.querySelector(".selected>.task");
-    if (!selected && selectedTarget)
-      await add((selectedTarget as HTMLElement).innerText);
+    const task = document.querySelector(".selected>.task");
+    if (!selected && task) {
+      task.textContent = (task.textContent as string).trim();
+      await add(task.textContent);
+    }
     selected = 0;
     const ul = document.querySelector("#tasks") as Element;
     const li = document.createElement("li");
@@ -121,7 +120,9 @@
     li.addEventListener("keydown", async (event) => {
       if (event.key == "Enter" || event.key == "Escape") {
         event.preventDefault();
-        await add((event.target as HTMLElement).innerText);
+        const target = event.target as Element;
+        target.textContent = (target.textContent as string).trim();
+        await add(target.textContent);
       }
     });
     ul.insertBefore(li, ul.childNodes[0]);
@@ -137,16 +138,16 @@
 
   const listKeydown = async (event: KeyboardEvent) => {
     const target = event.target as Element;
-    const list = (target.textContent as string).trim();
+    target.textContent = (target.textContent as string).trim();
     if (event.key == "Enter") {
       event.preventDefault();
-      if (list) editable = !(await editList(list));
+      if (target.textContent) editable = !(await editList(target.textContent));
       else {
         target.textContent = $current.list;
         editable = false;
       }
     } else if (event.key == "Escape") {
-      if (list) target.textContent = "";
+      if (target.textContent) target.textContent = "";
       else {
         target.textContent = $current.list;
         editable = false;
@@ -193,10 +194,12 @@
       target.textContent !== "Add Task"
     ) {
       const id = selected;
-      const selectedTarget = document.querySelector(".selected>.task");
-      if (selectedTarget)
-        if (id) await edit(id, (selectedTarget as HTMLElement).innerText);
-        else await add((selectedTarget as HTMLElement).innerText);
+      const task = document.querySelector(".selected>.task");
+      if (task) {
+        task.textContent = (task.textContent as string).trim();
+        if (id) await edit(id, task.textContent);
+        else await add(task.textContent);
+      }
       selected = 0;
     }
     if (
@@ -205,8 +208,9 @@
       !target.classList.contains("swal2-confirm") &&
       editable
     ) {
-      const list = (document.querySelector("#list") as Element).textContent;
-      if (list && list.trim()) editable = !(await editList(list));
+      const list = document.querySelector("#list") as Element;
+      list.textContent = (list.textContent as string).trim();
+      if (list.textContent) editable = !(await editList(list.textContent));
       else {
         target.textContent = $current.list;
         editable = false;
