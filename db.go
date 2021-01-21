@@ -17,11 +17,11 @@ func initDB() (err error) {
 
 	db, err = dbConfig.Open()
 	if err != nil {
-		return err
+		return
 	}
 	db.SetConnMaxLifetime(time.Minute * 1)
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 
-	return nil
+	return
 }
