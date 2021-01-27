@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sunshineplan/utils/archive"
 	"github.com/sunshineplan/utils/mail"
-	"github.com/sunshineplan/utils/zip"
 )
 
 func addUser(username string) {
-	log.Println("Start!")
+	log.Print("Start!")
 	if _, err := db.Exec("INSERT INTO user(username) VALUES (?)", strings.ToLower(username)); err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			log.Fatalf("Username %s already exists.", strings.ToLower(username))
@@ -22,11 +22,11 @@ func addUser(username string) {
 			log.Fatalln("Failed to add user:", err)
 		}
 	}
-	log.Println("Done!")
+	log.Print("Done!")
 }
 
 func deleteUser(username string) {
-	log.Println("Start!")
+	log.Print("Start!")
 	res, err := db.Exec("DELETE FROM user WHERE username=?", strings.ToLower(username))
 	if err != nil {
 		log.Fatalln("Failed to delete user:", err)
@@ -36,11 +36,11 @@ func deleteUser(username string) {
 	} else if n == 0 {
 		log.Fatalf("User %s does not exist.", strings.ToLower(username))
 	}
-	log.Println("Done!")
+	log.Print("Done!")
 }
 
 func backup() {
-	log.Println("Start!")
+	log.Print("Start!")
 	var config struct {
 		SMTPServer     string
 		SMTPServerPort int
@@ -72,7 +72,7 @@ func backup() {
 		log.Fatal(err)
 	}
 	var buf bytes.Buffer
-	if err := zip.FromBytes(&buf, zip.File{Name: "database", Body: b}); err != nil {
+	if err := archive.Pack(&buf, archive.ZIP, archive.File{Name: "database", Body: b}); err != nil {
 		log.Fatal(err)
 	}
 	if err := dialer.Send(
@@ -84,11 +84,11 @@ func backup() {
 	); err != nil {
 		log.Fatalln("Failed to send mail:", err)
 	}
-	log.Println("Done!")
+	log.Print("Done!")
 }
 
 func restore(file string) {
-	log.Println("Start!")
+	log.Print("Start!")
 	if file == "" {
 		file = joinPath(dir(self), "scripts/schema.sql")
 	} else {
@@ -103,5 +103,5 @@ func restore(file string) {
 	if err := dbConfig.Restore(file); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Done!")
+	log.Print("Done!")
 }
