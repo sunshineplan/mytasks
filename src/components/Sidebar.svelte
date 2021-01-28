@@ -153,7 +153,8 @@
     class="toggle"
     on:click={toggle}
     on:mouseenter={() => (hover = true)}
-    on:mouseleave={() => (hover = false)}>
+    on:mouseleave={() => (hover = false)}
+  >
     <svg viewBox="0 0 70 70" width="40" height="30">
       {#each [10, 30, 50] as y}
         <rect {y} width="100%" height="10" fill={hover ? "#1a73e8" : "white"} />
@@ -240,6 +241,12 @@
   }
 
   .nav-link.active {
+    background-color: #eaf5fd;
+  }
+
+  :global(.new) {
+    outline: 0;
+    border-left: 5px solid transparent;
     background-color: #eaf5fd;
   }
 

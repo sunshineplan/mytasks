@@ -46,7 +46,9 @@
     <h3
       class="d-flex justify-content-center align-items-center"
       style="height: 100%"
-    >Log In</h3>
+    >
+      Log In
+    </h3>
   </header>
   <div class="login">
     <div class="form-group">
@@ -92,5 +94,9 @@
   .login {
     width: 250px;
     margin: 0 auto 20px;
+  }
+
+  .form-control {
+    width: 250px;
   }
 </style>

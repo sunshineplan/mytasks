@@ -107,3 +107,13 @@
     <button class="btn btn-primary" on:click={cancel}>Cancel</button>
   </div>
 </div>
+
+<style>
+  .form {
+    padding: 0 20px;
+  }
+
+  .form-control {
+    width: 250px;
+  }
+</style>

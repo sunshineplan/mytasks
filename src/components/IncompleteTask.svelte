@@ -114,7 +114,8 @@
   <span
     class="task"
     contenteditable={task.id === selected}
-    on:keydown={handleKeydown}>
+    on:keydown={handleKeydown}
+  >
     {task.task}
   </span>
   <span class="created">
@@ -152,5 +153,16 @@
     width: 80px;
     text-align: right;
     cursor: default;
+  }
+
+  :global(.selected) {
+    cursor: text;
+    border-bottom-width: 1px;
+    border-color: #1a73e8;
+    background-color: #eaf5fd;
+  }
+
+  :global(.selected:hover) {
+    box-shadow: none;
   }
 </style>

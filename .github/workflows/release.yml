@@ -87,3 +87,20 @@ jobs:
           asset_path: ./release.tar.gz
           asset_name: release.tar.gz
           asset_content_type: application/gzip
+
+      - name: Download source files
+        run: |
+          curl -Lo source.zip ${{ steps.create_release.outputs.zipball_url }}
+
+      - name: Send mail
+        uses: dawidd6/action-send-mail@v2
+        with:
+          server_address: smtp.live.com
+          server_port: 587
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          subject: ${{ github.repository }} source backup - ${{ steps.build.outputs.date }}
+          body: ${{ github.repository }} source backup
+          from: Github Actions
+          to: ${{ secrets.TO }}
+          attachments: source.zip
