@@ -88,9 +88,9 @@ jobs:
           asset_name: release.tar.gz
           asset_content_type: application/gzip
 
-      - name: Download source files
+      - name: Download source code
         run: |
-          curl -Lo source.zip ${{ steps.create_release.outputs.zipball_url }}
+          curl -Lo source.zip https://api.github.com/repos/$GITHUB_REPOSITORY/zipball/v1.0
 
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
@@ -99,8 +99,8 @@ jobs:
           server_port: 587
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
-          subject: ${{ github.repository }} source backup - ${{ steps.build.outputs.date }}
-          body: ${{ github.repository }} source backup
+          subject: ${{ github.repository }} source code backup - ${{ steps.build.outputs.date }}
+          body: ${{ github.repository }} - ${{ github.sha }}\n${{ steps.build.outputs.date }}
           from: Github Actions
           to: ${{ secrets.TO }}
           attachments: source.zip
