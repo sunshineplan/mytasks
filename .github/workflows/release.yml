@@ -90,7 +90,7 @@ jobs:
 
       - name: Download source code
         run: |
-          curl -Lo backup.tar.gz https://api.github.com/repos/$GITHUB_REPOSITORY/tarball/v1.0
+          curl -Lo backup.zip https://api.github.com/repos/$GITHUB_REPOSITORY/zipball/v1.0
 
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
@@ -102,5 +102,5 @@ jobs:
           subject: ${{ github.repository }} Backup - ${{ steps.build.outputs.date }}
           body: ${{ github.repository }} - ${{ github.sha }}
           from: Github Actions
-          to: ${{ secrets.TO }}
-          attachments: backup.tar.gz
+          to: ${{ secrets.USERNAME }}
+          attachments: backup.zip
