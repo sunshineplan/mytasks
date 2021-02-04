@@ -27,8 +27,11 @@
         password,
         rememberme,
       });
-      if (!resp.ok) await fire("Error", await resp.text(), "error");
-      else dispatch("info");
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.status == 1) dispatch("info");
+        else await fire("Error", json.message, "error");
+      } else await fire("Error", await resp.text(), "error");
     }
   };
 
