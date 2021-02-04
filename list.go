@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,7 +45,12 @@ func getList(userID interface{}) ([]list, error) {
 }
 
 func addList(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	}
 
 	var list list
 	if err := c.BindJSON(&list); err != nil {
@@ -100,8 +104,12 @@ func editList(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-	if !checkList(id, userID) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if !checkList(id, userID) {
 		c.String(403, "")
 		return
 	}
@@ -150,7 +158,12 @@ func deleteList(c *gin.Context) {
 		return
 	}
 
-	if checkList(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkList(id, userID) {
 		if _, err := db.Exec("CALL delete_list(?)", id); err != nil {
 			log.Println("Failed to deleted list:", err)
 			c.String(500, "")
@@ -169,8 +182,12 @@ func reorderList(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-	if !checkList(reorder.Old, userID) ||
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if !checkList(reorder.Old, userID) ||
 		!checkList(reorder.New, userID) {
 		c.String(403, "")
 		return

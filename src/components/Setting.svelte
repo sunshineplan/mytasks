@@ -10,7 +10,7 @@
   const setting = async () => {
     if (valid()) {
       validated = false;
-      const resp = await post("/setting", {
+      const resp = await post("@universal@/chgpwd", {
         password,
         password1,
         password2,

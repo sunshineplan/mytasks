@@ -3,6 +3,7 @@
   import Setting from "./components/Setting.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Show from "./components/Show.svelte";
+  import { fire, post } from "./misc";
   import {
     username as user,
     current,
@@ -32,6 +33,15 @@
     if (window.innerWidth <= 900) $showSidebar = false;
     $component = "setting";
   };
+
+  const logout = async () => {
+    const resp = await post("@universal@/logout");
+    if (resp.ok) {
+      $user = "";
+      window.history.pushState({}, "", "/");
+      $component = "show";
+    } else await fire("Error", "Unknow error", "error");
+  };
 </script>
 
 <nav class="navbar navbar-light topbar">
@@ -42,7 +52,7 @@
     <div class="navbar-nav flex-row">
       <span class="nav-link">{$user}</span>
       <span class="nav-link link" on:click={setting}>Setting</span>
-      <a class="nav-link link" href="/logout">Log Out</a>
+      <span class="nav-link link" on:click={logout}>Logout</span>
     </div>
   {:else}
     <div class="navbar-nav flex-row"><span class="nav-link">Log In</span></div>

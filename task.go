@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,7 +41,12 @@ func addTask(c *gin.Context) {
 		return
 	}
 
-	if checkList(task.List, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkList(task.List, userID) {
 		result, err := db.Exec("INSERT INTO task (task, list_id) VALUES (?, ?)",
 			strings.TrimSpace(task.Task), task.List)
 		if err != nil {
@@ -75,7 +79,12 @@ func editTask(c *gin.Context) {
 		return
 	}
 
-	if checkAll(id, task.List, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkAll(id, task.List, userID) {
 		if _, err := db.Exec("UPDATE task SET task = ? WHERE id = ? AND list_id = ?",
 			strings.TrimSpace(task.Task), id, task.List); err != nil {
 			log.Println("Failed to edit task:", err)
@@ -96,7 +105,12 @@ func completeTask(c *gin.Context) {
 		return
 	}
 
-	if checkTask(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkTask(id, userID) {
 		var insertID int
 		if err := db.QueryRow("CALL complete_task(?)", id).Scan(&insertID); err != nil || insertID == 0 {
 			log.Println("Failed to complete task:", err)
@@ -117,7 +131,12 @@ func deleteTask(c *gin.Context) {
 		return
 	}
 
-	if checkTask(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkTask(id, userID) {
 		if _, err := db.Exec("DELETE FROM task WHERE id = ?", id); err != nil {
 			log.Println("Failed to delete task:", err)
 			c.String(500, "")
@@ -136,8 +155,12 @@ func reorderTask(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-	if !checkAll(reorder.Old, reorder.List, userID) ||
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if !checkAll(reorder.Old, reorder.List, userID) ||
 		!checkAll(reorder.New, reorder.List, userID) {
 		c.String(403, "")
 		return

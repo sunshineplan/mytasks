@@ -22,7 +22,7 @@
     )
       await fire("Error", "Password cannot be empty.", "error");
     else {
-      const resp = await post("/login", {
+      const resp = await post("@universal@/login", {
         username,
         password,
         rememberme,

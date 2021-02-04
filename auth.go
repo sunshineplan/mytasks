@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/gin-gonic/contrib/sessions"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,10 +17,21 @@ type user struct {
 }
 
 func authRequired(c *gin.Context) {
-	userID := sessions.Default(c).Get("userID")
-	if userID == nil {
+	if sessions.Default(c).Get("id") == nil {
 		c.AbortWithStatus(401)
 	}
+}
+
+func getUser(c *gin.Context) (id int, username string, err error) {
+	session := sessions.Default(c)
+	sid := session.Get("id")
+	username = session.Get("username").(string)
+	if universal {
+		err = db.QueryRow("SELECT id FROM user WHERE uid = ?", sid).Scan(&id)
+		return
+	}
+	id = sid.(int)
+	return
 }
 
 func login(c *gin.Context) {
@@ -68,7 +79,8 @@ func login(c *gin.Context) {
 		if message == "" {
 			session := sessions.Default(c)
 			session.Clear()
-			session.Set("userID", user.ID)
+			session.Set("id", user.ID)
+			session.Set("username", user.Username)
 
 			if login.Rememberme {
 				session.Options(sessions.Options{Path: "/", HttpOnly: true, MaxAge: 856400 * 365})
@@ -88,15 +100,15 @@ func login(c *gin.Context) {
 	c.String(statusCode, message)
 }
 
-func setting(c *gin.Context) {
-	var setting struct{ Password, Password1, Password2 string }
-	if err := c.BindJSON(&setting); err != nil {
+func chgpwd(c *gin.Context) {
+	var data struct{ Password, Password1, Password2 string }
+	if err := c.BindJSON(&data); err != nil {
 		c.String(400, "")
 		return
 	}
 
 	session := sessions.Default(c)
-	userID := session.Get("userID")
+	userID := session.Get("id")
 
 	var oldPassword string
 	if err := db.QueryRow("SELECT password FROM user WHERE id = ?", userID).Scan(&oldPassword); err != nil {
@@ -107,30 +119,30 @@ func setting(c *gin.Context) {
 
 	var message string
 	var errorCode int
-	err := bcrypt.CompareHashAndPassword([]byte(oldPassword), []byte(setting.Password))
+	err := bcrypt.CompareHashAndPassword([]byte(oldPassword), []byte(data.Password))
 	switch {
 	case err != nil:
-		if (err == bcrypt.ErrHashTooShort && setting.Password != oldPassword) ||
+		if (err == bcrypt.ErrHashTooShort && data.Password != oldPassword) ||
 			err == bcrypt.ErrMismatchedHashAndPassword {
 			message = "Incorrect password."
 			errorCode = 1
-		} else if setting.Password != oldPassword {
+		} else if data.Password != oldPassword {
 			log.Print(err)
 			c.String(500, "")
 			return
 		}
-	case setting.Password1 != setting.Password2:
+	case data.Password1 != data.Password2:
 		message = "Confirm password doesn't match new password."
 		errorCode = 2
-	case setting.Password1 == setting.Password:
+	case data.Password1 == data.Password:
 		message = "New password cannot be the same as your current password."
 		errorCode = 2
-	case setting.Password1 == "":
+	case data.Password1 == "":
 		message = "New password cannot be blank."
 	}
 
 	if message == "" {
-		newPassword, err := bcrypt.GenerateFromPassword([]byte(setting.Password1), bcrypt.MinCost)
+		newPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password1), bcrypt.MinCost)
 		if err != nil {
 			log.Print(err)
 			c.String(500, "")

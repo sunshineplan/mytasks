@@ -233,7 +233,8 @@
         id="list"
         class:editable
         contenteditable={editable}
-        on:keydown={listKeydown}>
+        on:keydown={listKeydown}
+      >
         {$current.list}
       </span>
       <span on:click={listClick}>

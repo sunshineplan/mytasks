@@ -15,6 +15,13 @@ configMyTasks() {
     read -p 'Please enter metadata server: ' server
     read -p 'Please enter VerifyHeader header: ' header
     read -p 'Please enter VerifyHeader value: ' value
+    while true
+    do
+        read -p 'Use Universal ID(default: false): ' universal
+        [ -z $universal ] && universal=false && break
+        [ $universal = true -o $universal = false ] && break
+        echo Use Universal ID must be true or false!
+    done
     read -p 'Please enter unix socket(default: /run/mytasks.sock): ' unix
     [ -z $unix ] && unix=/run/mytasks.sock
     read -p 'Please enter host(default: 127.0.0.1): ' host
@@ -29,6 +36,7 @@ configMyTasks() {
     sed "s,\$server,$server," /var/www/mytasks/config.ini.default > /var/www/mytasks/config.ini
     sed -i "s/\$header/$header/" /var/www/mytasks/config.ini
     sed -i "s/\$value/$value/" /var/www/mytasks/config.ini
+    sed -i "s/\$universal/$universal/" /var/www/mystocks/config.ini
     sed -i "s,\$unix,$unix," /var/www/mytasks/config.ini
     sed -i "s,\$log,$log," /var/www/mytasks/config.ini
     sed -i "s/\$host/$host/" /var/www/mytasks/config.ini

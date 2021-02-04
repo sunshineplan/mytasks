@@ -4,7 +4,6 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,8 +23,12 @@ func moreCompleted(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-	if !checkList(option.List, userID) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if !checkList(option.List, userID) {
 		c.String(403, "")
 		return
 	}
@@ -60,7 +63,12 @@ func revertCompleted(c *gin.Context) {
 		return
 	}
 
-	if checkCompleted(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkCompleted(id, userID) {
 		var insertID int
 		if err := db.QueryRow("CALL revert_completed(?)", id).Scan(&insertID); err != nil || insertID == 0 {
 			log.Println("Failed to revert completed task:", err)
@@ -81,7 +89,12 @@ func deleteCompleted(c *gin.Context) {
 		return
 	}
 
-	if checkCompleted(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkCompleted(id, userID) {
 		if _, err := db.Exec("DELETE FROM completed WHERE id = ?", id); err != nil {
 			log.Println("Failed to delete completed task:", err)
 			c.String(500, "")
@@ -101,7 +114,12 @@ func emptyCompleted(c *gin.Context) {
 		return
 	}
 
-	if checkCompleted(id, sessions.Default(c).Get("userID")) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if checkCompleted(id, userID) {
 		if _, err := db.Exec("DELETE FROM completed WHERE list_id = ?", id); err != nil {
 			log.Println("Failed to empty completed task:", err)
 			c.String(500, "")

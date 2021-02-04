@@ -3,27 +3,20 @@ package main
 import (
 	"log"
 
-	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
 func info(c *gin.Context) {
 	info := gin.H{}
-	userID := sessions.Default(c).Get("userID")
-	if userID == nil {
-		c.JSON(200, info)
-		return
-	}
 
-	var username string
-	if err := db.QueryRow("SELECT username FROM user WHERE id = ?", userID).Scan(&username); err != nil {
-		log.Println("Failed to get username:", err)
-		c.String(500, "")
+	id, username, _ := getUser(c)
+	if username == "" {
+		c.JSON(200, info)
 		return
 	}
 	info["username"] = username
 
-	lists, err := getList(userID)
+	lists, err := getList(id)
 	if err != nil {
 		log.Println("Failed to get list:", err)
 		c.String(500, "")
@@ -41,8 +34,12 @@ func get(c *gin.Context) {
 		return
 	}
 
-	userID := sessions.Default(c).Get("userID")
-	if !checkList(option.List, userID) {
+	userID, _, err := getUser(c)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	} else if !checkList(option.List, userID) {
 		c.String(403, "")
 		return
 	}
