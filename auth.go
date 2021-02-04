@@ -30,7 +30,7 @@ func getUser(c *gin.Context) (id int, username string, err error) {
 		err = db.QueryRow("SELECT id FROM user WHERE uid = ?", sid).Scan(&id)
 		return
 	}
-	id = sid.(int)
+	id, _ = sid.(int)
 	return
 }
 
