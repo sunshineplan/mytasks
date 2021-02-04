@@ -46,7 +46,6 @@ func login(c *gin.Context) {
 	login.Username = strings.ToLower(login.Username)
 
 	var user user
-	statusCode := 200
 	var message string
 	if err := db.QueryRow(
 		"SELECT id, username, password FROM user WHERE username = ?",
@@ -54,26 +53,24 @@ func login(c *gin.Context) {
 	).Scan(&user.ID, &user.Username, &user.Password); err != nil {
 		if strings.Contains(err.Error(), "doesn't exist") {
 			restore("")
-			statusCode = 503
-			message = "Detected first time running. Initialized the database."
+			c.String(503, "Detected first time running. Initialized the database.")
+			return
 		} else if err == sql.ErrNoRows {
-			statusCode = 403
 			message = "Incorrect username"
 		} else {
 			log.Print(err)
-			statusCode = 500
-			message = "Critical Error! Please contact your system administrator."
+			c.String(500, "Critical Error! Please contact your system administrator.")
+			return
 		}
 	} else {
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)); err != nil {
 			if (err == bcrypt.ErrHashTooShort && user.Password != login.Password) ||
 				err == bcrypt.ErrMismatchedHashAndPassword {
-				statusCode = 403
 				message = "Incorrect password"
 			} else if user.Password != login.Password {
 				log.Print(err)
-				statusCode = 500
-				message = "Critical Error! Please contact your system administrator."
+				c.String(500, "Critical Error! Please contact your system administrator.")
+				return
 			}
 		}
 		if message == "" {
@@ -90,14 +87,16 @@ func login(c *gin.Context) {
 
 			if err := session.Save(); err != nil {
 				log.Print(err)
-				statusCode = 500
-				message = "Failed to save session."
-			} else {
-				message = "OK"
+				c.String(500, "Internal Server Error")
+				return
 			}
+
+			c.JSON(200, gin.H{"status": 1})
+			return
 		}
 	}
-	c.String(statusCode, message)
+
+	c.JSON(200, gin.H{"status": 0, "message": message})
 }
 
 func chgpwd(c *gin.Context) {
