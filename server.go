@@ -48,6 +48,9 @@ func run() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if err := redis.SetKeyPrefix(store, "account_"); err != nil {
+			log.Fatal(err)
+		}
 		router.Use(sessions.Sessions("universal", store))
 	} else {
 		if err := ioutil.WriteFile(joinPath(dir(self), "public/build/script.js"),
