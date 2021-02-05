@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import { fire, post, valid } from "../misc";
-  import { username, component } from "../stores";
+  import { component } from "../stores";
+
+  const dispatch = createEventDispatcher();
 
   let password = "";
   let password1 = "";
@@ -24,7 +27,7 @@
             "Your password has changed. Please Re-login!",
             "success"
           );
-          $username = "";
+          dispatch("reload");
           $component = "show";
         } else {
           await fire("Error", json.message, "error");

@@ -37,7 +37,7 @@
   const logout = async () => {
     const resp = await post("@universal@/logout");
     if (resp.ok) {
-      $user = "";
+      await getInfo();
       window.history.pushState({}, "", "/");
       $component = "show";
     } else await fire("Error", "Unknow error", "error");
