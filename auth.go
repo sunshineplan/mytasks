@@ -152,6 +152,7 @@ func chgpwd(c *gin.Context) {
 			return
 		}
 		session.Clear()
+		session.Options(sessions.Options{MaxAge: -1})
 		if err := session.Save(); err != nil {
 			log.Print(err)
 			c.String(500, "")

@@ -83,6 +83,7 @@ func run() {
 		auth.POST("/logout", authRequired, func(c *gin.Context) {
 			session := sessions.Default(c)
 			session.Clear()
+			session.Options(sessions.Options{MaxAge: -1})
 			if err := session.Save(); err != nil {
 				log.Print(err)
 				c.String(500, "")
