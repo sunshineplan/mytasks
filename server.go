@@ -25,6 +25,10 @@ func run() {
 		log.SetOutput(f)
 	}
 
+	if err := initDB(); err != nil {
+		log.Fatalln("Failed to initialize database:", err)
+	}
+
 	router := gin.Default()
 	server.Handler = router
 

@@ -15,6 +15,10 @@ import (
 
 func addUser(username string) {
 	log.Print("Start!")
+	if err := initDB(); err != nil {
+		log.Fatalln("Failed to initialize database:", err)
+	}
+
 	username = strings.TrimSpace(strings.ToLower(username))
 	if _, err := db.Exec("INSERT INTO user(username, uid) VALUES (?, ?)", username, username); err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -28,6 +32,10 @@ func addUser(username string) {
 
 func deleteUser(username string) {
 	log.Print("Start!")
+	if err := initDB(); err != nil {
+		log.Fatalln("Failed to initialize database:", err)
+	}
+
 	username = strings.TrimSpace(strings.ToLower(username))
 	res, err := db.Exec("DELETE FROM user WHERE username = ?", username)
 	if err != nil {
