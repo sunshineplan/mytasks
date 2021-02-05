@@ -43,7 +43,7 @@ configMyTasks() {
     sed -i "s/\$port/$port/" /var/www/mytasks/config.ini
     sed -i "s,\$update,$update," /var/www/mytasks/config.ini
     sed -i "s|\$exclude|$exclude|" /var/www/mytasks/config.ini
-    ./mytasks install
+    ./mytasks install || exit 1
     service mytasks start
 }
 
