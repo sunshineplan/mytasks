@@ -11,6 +11,7 @@
     component,
     loading,
     lists,
+    reset,
   } from "./stores";
 
   const getInfo = async () => {
@@ -19,10 +20,7 @@
     if (Object.keys(info).length) {
       $user = info.username;
       $lists = info.lists;
-    } else {
-      $user = "";
-      return;
-    }
+    } else reset();
     if ($lists.length) if (!$current.id) $current = $lists[0];
   };
   const promise = getInfo();
