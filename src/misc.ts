@@ -42,7 +42,8 @@ export const post = async (url: string, data?: object) => {
     resp = await fetch(url, {
       method: 'post',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      credentials: 'include'
     })
   } catch (e) {
     return Promise.reject(await fire('Error', e, 'error'))

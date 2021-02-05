@@ -48,7 +48,7 @@ func run() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		router.Use(sessions.Sessions("session", store))
+		router.Use(sessions.Sessions("universal", store))
 	} else {
 		if err := ioutil.WriteFile(joinPath(dir(self), "public/build/script.js"),
 			[]byte(strings.ReplaceAll(string(js), "@universal@", "")), 0644); err != nil {

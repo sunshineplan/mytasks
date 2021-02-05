@@ -26,6 +26,7 @@ func getUser(c *gin.Context) (id int, username string, err error) {
 	session := sessions.Default(c)
 	sid := session.Get("id")
 	username, _ = session.Get("username").(string)
+	log.Println(sid, username)
 	if universal {
 		err = db.QueryRow("SELECT id FROM user WHERE uid = ?", sid).Scan(&id)
 		return
