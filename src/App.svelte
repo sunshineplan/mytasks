@@ -19,7 +19,10 @@
     if (Object.keys(info).length) {
       $user = info.username;
       $lists = info.lists;
-    } else return;
+    } else {
+      $user = "";
+      return;
+    }
     if ($lists.length) if (!$current.id) $current = $lists[0];
   };
   const promise = getInfo();
