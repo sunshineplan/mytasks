@@ -59,7 +59,12 @@ func getList(userID string) ([]list, error) {
 	defer cancel()
 
 	if err := cursor.All(ctx, &completed); err != nil {
-		log.Println("Failed to get categories:", err)
+		log.Println("Failed to get completed tasks:", err)
+		return lists, err
+	}
+
+	if err := <-c; err != nil {
+		log.Println("Failed to incomplete tasks:", err)
 		return lists, err
 	}
 
