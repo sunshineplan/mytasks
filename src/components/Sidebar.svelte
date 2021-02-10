@@ -1,12 +1,6 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import Sortable from "sortablejs";
-  import { onMount } from "svelte";
-  import { fire, post } from "../misc";
-  import { current, component, showSidebar, loading, lists } from "../stores";
+  import { current, component, showSidebar, lists } from "../stores";
   import type { List } from "../stores";
-
-  const dispatch = createEventDispatcher();
 
   let hover = false;
   let smallSize = window.innerWidth <= 900;
@@ -23,61 +17,44 @@
 
   const add = async (list: string) => {
     list = list.trim();
-    $loading++;
-    const resp = await post("/list/add", { list });
-    $loading--;
-    let json: any = {};
-    if (resp.ok) {
-      json = await resp.json();
-      if (json.id && json.status) {
-        (document.querySelector(".new") as Element).remove();
-        const newList: List = {
-          id: json.id,
-          list,
-          incomplete: 0,
-          completed: 0,
-        };
-        $lists = [...$lists, newList];
-        goto(newList);
-        return true;
-      }
-    }
-    await fire("Error", json.message ? json.message : "Error", "error");
-    dispatch("reload");
-    return false;
+    (document.querySelector(".new") as Element).remove();
+    const newList: List = {
+      list,
+      incomplete: 0,
+      completed: 0,
+    };
+    $lists = [...$lists, newList];
+    goto(newList);
   };
 
   const addList = async () => {
     if (window.innerWidth <= 900) $showSidebar = false;
     const newList = document.querySelector(".new");
-    let ok = true;
-    if (newList) ok = await add((newList as HTMLElement).innerText);
-    if (ok) {
-      const ul = document.querySelector("ul.navbar-nav") as Element;
-      const li = document.createElement("li");
-      li.classList.add("nav-link", "new");
-      ul.appendChild(li);
-      li.addEventListener("keydown", async (event) => {
-        const target = event.target as Element;
-        const list = (target.textContent as string).trim();
-        if (event.key == "Enter") {
-          event.preventDefault();
-          if (list) await add(list);
-          else target.remove();
-        } else if (event.key == "Escape") {
-          if (list) target.textContent = "";
-          else target.remove();
-        }
-      });
-      li.setAttribute("contenteditable", "true");
-      li.focus();
-      const range = document.createRange();
-      range.selectNodeContents(li);
-      range.collapse(false);
-      const sel = window.getSelection() as Selection;
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
+    if (newList) await add((newList as HTMLElement).innerText);
+    const ul = document.querySelector("ul.navbar-nav") as Element;
+    const li = document.createElement("li");
+    li.classList.add("nav-link", "new");
+    ul.appendChild(li);
+    li.addEventListener("keydown", async (event) => {
+      const target = event.target as Element;
+      const list = (target.textContent as string).trim();
+      if (event.key == "Enter") {
+        event.preventDefault();
+        if (list) await add(list);
+        else target.remove();
+      } else if (event.key == "Escape") {
+        if (list) target.textContent = "";
+        else target.remove();
+      }
+    });
+    li.setAttribute("contenteditable", "true");
+    li.focus();
+    const range = document.createRange();
+    range.selectNodeContents(li);
+    range.collapse(false);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 
   const checkSize = () => {
@@ -89,8 +66,8 @@
       const newList = document.querySelector(".new");
       if (newList) newList.remove();
       const len = $lists.length;
-      const index = $lists.findIndex((list) => list.id === $current.id);
-      if ($current.id && $component === "show")
+      const index = $lists.findIndex((list) => list.list === $current.list);
+      if ($component === "show")
         if (event.key == "ArrowUp") {
           if (index > 0) goto($lists[index - 1]);
         } else if (event.key == "ArrowDown")
@@ -110,34 +87,6 @@
         if (list) await add(list);
         else newList.remove();
       }
-    }
-  };
-
-  onMount(() => {
-    const sortable = new Sortable(
-      document.querySelector("#lists") as HTMLElement,
-      {
-        animation: 150,
-        delay: 200,
-        swapThreshold: 0.5,
-        onUpdate,
-      }
-    );
-    return () => sortable.destroy();
-  });
-
-  const onUpdate = async (event: Sortable.SortableEvent) => {
-    const resp = await post("/list/reorder", {
-      old: $lists[event.oldIndex as number].id,
-      new: $lists[event.newIndex as number].id,
-    });
-    if ((await resp.text()) == "1") {
-      const list = $lists[event.oldIndex as number];
-      $lists.splice(event.oldIndex as number, 1);
-      $lists.splice(event.newIndex as number, 0, list);
-    } else {
-      await fire("Error", "Failed to reorder list", "error");
-      dispatch("reload");
     }
   };
 </script>
@@ -169,10 +118,10 @@
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav" id="lists">
-      {#each $lists as list (list.id)}
+      {#each $lists as list (list.list)}
         <li
           class="nav-link list"
-          class:active={$current.id === list.id && $component === "show"}
+          class:active={$current.list === list.list && $component === "show"}
           on:click={() => goto(list)}
         >
           {list.list} ({list.incomplete})

@@ -15,13 +15,15 @@
   } from "./stores";
 
   const getInfo = async () => {
+    $loading++;
     const resp = await fetch("/info");
+    $loading--;
     const info = await resp.json();
     if (Object.keys(info).length) {
       $user = info.username;
       $lists = info.lists;
     } else reset();
-    if ($lists.length) if (!$current.id) $current = $lists[0];
+    if ($lists.length) if (!$current.list) $current = $lists[0];
   };
   const promise = getInfo();
 
@@ -36,7 +38,7 @@
   };
 
   const logout = async () => {
-    const resp = await post("@universal@/logout");
+    const resp = await post("@universal@/logout", undefined, true);
     if (resp.ok) {
       await getInfo();
       window.history.pushState({}, "", "/");

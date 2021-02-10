@@ -10,7 +10,7 @@
 
   let currentIncomplete: Task[] = [];
   let currentCompleted: Task[] = [];
-  let selected: number;
+  let selected: string;
   let editable = false;
   let showCompleted = false;
 
@@ -29,7 +29,7 @@
     if (!force) showCompleted = false;
     if (!$tasks.hasOwnProperty($current.list) || force) {
       $loading++;
-      const resp = await post("/get", { list: $current.id });
+      const resp = await post("/get", { list: $current.list });
       $tasks[$current.list] = await resp.json();
       $loading--;
     }
@@ -42,13 +42,13 @@
     list = list.trim();
     if ($current.list != list) {
       $loading++;
-      const resp = await post("/list/edit/" + $current.id, { list });
+      const resp = await post("/list/edit", { old: $current.list, new: list });
       $loading--;
       let json: any = {};
       if (resp.ok) {
         json = await resp.json();
         if (json.status) {
-          const index = $lists.findIndex((list) => list.id === $current.id);
+          const index = $lists.findIndex((list) => list.list === $current.list);
           $lists[index].list = list;
           delete Object.assign($tasks, { [list]: currentIncomplete })[
             $current.list
@@ -67,13 +67,13 @@
     task = task.trim();
     if (task) {
       $loading++;
-      const resp = await post("/task/add", { task, list: $current.id });
+      const resp = await post("/task/add", { task, list: $current.list });
       $loading--;
       let json: any = {};
       if (resp.ok) {
         json = await resp.json();
         if (json.status && json.id) {
-          const index = $lists.findIndex((list) => list.id === $current.id);
+          const index = $lists.findIndex((list) => list.list === $current.list);
           $lists[index].incomplete++;
           $tasks[$current.list].incomplete = [
             { id: json.id, task, created: new Date().toLocaleString() },
@@ -91,13 +91,16 @@
       if (selected) selected.remove();
     }
   };
-  const edit = async (id: number, task: string) => {
+  const edit = async (id: string, task: string) => {
     task = task.trim();
     const index = currentIncomplete.findIndex((task) => task.id === id);
     if (currentIncomplete[index].task != task) {
       currentIncomplete[index].task = task;
       $loading++;
-      const resp = await post("/task/edit/" + id, { task, list: $current.id });
+      const resp = await post("/task/edit/" + id, {
+        task,
+        list: $current.list,
+      });
       $loading--;
       if (!resp.ok) await fire("Error", "Error", "error");
     }
@@ -109,7 +112,7 @@
       task.textContent = (task.textContent as string).trim();
       await add(task.textContent);
     }
-    selected = 0;
+    selected = "";
     const ul = document.querySelector("#tasks") as Element;
     const li = document.createElement("li");
     li.classList.add("list-group-item", "selected");
@@ -160,10 +163,10 @@
         await fire("Error", "You must have at least one list!", "error");
       else if (await confirm("This list")) {
         $loading++;
-        const resp = await post("/list/delete/" + $current.id);
+        const resp = await post("/list/delete", { list: $current.list });
         $loading--;
         if (resp.ok) {
-          const index = $lists.findIndex((list) => list.id === $current.id);
+          const index = $lists.findIndex((list) => list.list === $current.list);
           $lists.splice(index, 1);
           delete $tasks[$current.list];
           $current = $lists[0];
@@ -200,7 +203,7 @@
         if (id) await edit(id, task.textContent);
         else await add(task.textContent);
       }
-      selected = 0;
+      selected = "";
     }
     if (
       target.id !== "list" &&

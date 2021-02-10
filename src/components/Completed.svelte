@@ -10,7 +10,7 @@
   export let show = false;
   export let completedTasks: Task[] = [];
 
-  $: index = $lists.findIndex((list) => list.id === $current.id);
+  $: index = $lists.findIndex((list) => list.list === $current.list);
 
   const expand = (event: MouseEvent) => {
     const target = event.target as Element;
@@ -20,7 +20,7 @@
   const empty = async () => {
     if (await confirm("All completed tasks")) {
       $loading++;
-      const resp = await post("/completed/empty/" + $current.id);
+      const resp = await post("/completed/empty", { list: $current.list });
       const json = await resp.json();
       $loading--;
       if (json.status) {
@@ -35,7 +35,7 @@
   const more = async () => {
     $loading++;
     const resp = await post("/completed/more", {
-      list: $current.id,
+      list: $current.list,
       start: completedTasks.length,
     });
     $tasks[$current.list].completed = completedTasks.concat(await resp.json());

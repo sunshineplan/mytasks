@@ -9,7 +9,7 @@
   const dispatch = createEventDispatcher();
 
   export let showCompleted = false;
-  export let selected = 0;
+  export let selected = "";
   export let incompleteTasks: Task[] = [];
 
   onMount(() => {
@@ -27,7 +27,7 @@
 
   const onUpdate = async (event: Sortable.SortableEvent) => {
     const resp = await post("/task/reorder", {
-      list: $current.id,
+      list: $current.list,
       old: incompleteTasks[event.oldIndex as number].id,
       new: incompleteTasks[event.newIndex as number].id,
     });

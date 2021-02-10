@@ -13,11 +13,15 @@
   const setting = async () => {
     if (valid()) {
       validated = false;
-      const resp = await post("@universal@/chgpwd", {
-        password,
-        password1,
-        password2,
-      });
+      const resp = await post(
+        "@universal@/chgpwd",
+        {
+          password,
+          password1,
+          password2,
+        },
+        true
+      );
       if (!resp.ok) await fire("Error", await resp.text(), "error");
       else {
         const json = await resp.json();

@@ -16,7 +16,7 @@
     if (resp.ok) {
       const json = await resp.json();
       if (json.status && json.id) {
-        let index = $lists.findIndex((list) => list.id === $current.id);
+        let index = $lists.findIndex((list) => list.list === $current.list);
         $lists[index].incomplete++;
         $lists[index].completed--;
         index = $tasks[$current.list].completed.findIndex(

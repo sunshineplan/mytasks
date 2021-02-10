@@ -22,11 +22,15 @@
     )
       await fire("Error", "Password cannot be empty.", "error");
     else {
-      const resp = await post("@universal@/login", {
-        username,
-        password,
-        rememberme,
-      });
+      const resp = await post(
+        "@universal@/login",
+        {
+          username,
+          password,
+          rememberme,
+        },
+        true
+      );
       if (resp.ok) {
         const json = await resp.json();
         if (json.status == 1) dispatch("info");

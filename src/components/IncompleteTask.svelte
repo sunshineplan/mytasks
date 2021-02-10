@@ -6,7 +6,7 @@
 
   const dispatch = createEventDispatcher();
 
-  export let selected = 0;
+  export let selected = "";
   export let task: Task;
   let hover = false;
 
@@ -17,7 +17,7 @@
     if (resp.ok) {
       const json = await resp.json();
       if (json.status && json.id) {
-        let index = $lists.findIndex((list) => list.id === $current.id);
+        let index = $lists.findIndex((list) => list.list === $current.list);
         $lists[index].incomplete--;
         $lists[index].completed++;
         index = $tasks[$current.list].incomplete.findIndex(
@@ -50,7 +50,7 @@
           (i) => task.id === i.id
         );
         $tasks[$current.list].incomplete.splice(index, 1);
-        index = $lists.findIndex((list) => list.id === $current.id);
+        index = $lists.findIndex((list) => list.list === $current.list);
         $lists[index].incomplete--;
         dispatch("refresh");
       } else {
@@ -69,7 +69,7 @@
         id: task.id,
         task: target.textContent,
       });
-      selected = 0;
+      selected = "";
     }
   };
   const handleClick = (event: MouseEvent) => {
