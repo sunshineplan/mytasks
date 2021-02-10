@@ -1,159 +1,168 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type list struct {
-	ID         int    `json:"id"`
-	Name       string `json:"list"`
+	List       string `json:"list"`
 	Incomplete int    `json:"incomplete"`
 	Completed  int    `json:"completed"`
 }
 
-func checkList(listID, userID interface{}) bool {
-	var exist string
-	if err := db.QueryRow("SELECT list FROM list WHERE id = ? AND user_id = ?",
-		listID, userID).Scan(&exist); err == nil {
-		return true
-	}
-	return false
-}
-
-func getList(userID interface{}) ([]list, error) {
-	rows, err := db.Query("SELECT id, list, incomplete, completed FROM lists WHERE user_id = ?", userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func getList(userID string) ([]list, error) {
 	lists := []list{}
-	for rows.Next() {
-		var list list
-		if err := rows.Scan(&list.ID, &list.Name, &list.Incomplete, &list.Completed); err != nil {
-			return nil, err
+	var incomplete, completed []struct {
+		List  string `bson:"_id"`
+		Count int
+	}
+	c := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		cursor, err := collIncomplete.Aggregate(ctx, []bson.M{
+			{"$match": bson.M{"user": userID}},
+			{"$group": bson.M{"_id": "$list", "count": bson.M{"$sum": 1}}},
+			{"$sort": bson.M{"count": 1}},
+		})
+		if err != nil {
+			log.Println("Failed to query incomplete tasks:", err)
+			return
 		}
-		lists = append(lists, list)
+
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		c <- cursor.All(ctx, &incomplete)
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cursor, err := collCompleted.Aggregate(ctx, []bson.M{
+		{"$match": bson.M{"user": userID}},
+		{"$group": bson.M{"_id": "$list", "count": bson.M{"$sum": 1}}},
+	})
+	if err != nil {
+		log.Println("Failed to query completed tasks:", err)
+		return lists, err
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := cursor.All(ctx, &completed); err != nil {
+		log.Println("Failed to get categories:", err)
+		return lists, err
+	}
+
+	for _, i := range incomplete {
+		lists = append(lists, list{List: i.List, Incomplete: i.Count})
+	}
+Loop:
+	for _, i := range completed {
+		for index := range lists {
+			if lists[index].List == i.List {
+				lists[index].Completed = i.Count
+				continue Loop
+			}
+		}
+		lists = append(lists, list{List: i.List, Completed: i.Count})
 	}
 
 	return lists, nil
 }
 
-func addList(c *gin.Context) {
-	userID, _, err := getUser(c)
-	if err != nil {
-		log.Print(err)
-		c.String(500, "")
-		return
-	}
-
-	var list list
-	if err := c.BindJSON(&list); err != nil {
-		c.String(400, "")
-		return
-	}
-	list.Name = strings.TrimSpace(list.Name)
-
-	var message string
-	switch {
-	case list.Name == "":
-		message = "List name is empty."
-	case len(list.Name) > 15:
-		message = "List name exceeded length limit."
-	default:
-		var exist string
-		if err := db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ?",
-			list.Name, userID).Scan(&exist); err == nil {
-			message = fmt.Sprintf("List %s is already existed.", list.Name)
-		} else {
-			if err == sql.ErrNoRows {
-				result, err := db.Exec("INSERT INTO list (list, user_id) VALUES (?, ?)",
-					list.Name, userID)
-				if err != nil {
-					log.Println("Failed to add list:", err)
-					c.String(500, "")
-					return
-				}
-				id, err := result.LastInsertId()
-				if err != nil {
-					log.Println("Failed to get last insert id:", err)
-					c.String(500, "")
-					return
-				}
-				c.JSON(200, gin.H{"status": 1, "id": id})
-				return
-			}
-			log.Println("Failed to scan list:", err)
-			c.String(500, "")
-			return
-		}
-	}
-	c.JSON(200, gin.H{"status": 0, "message": message, "error": 1})
-}
-
 func editList(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		log.Println("Failed to get id param:", err)
+	var data struct{ Old, New string }
+	if err := c.BindJSON(&data); err != nil {
+		log.Print(err)
 		c.String(400, "")
 		return
 	}
+	data.New = strings.TrimSpace(data.New)
 
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if !checkList(id, userID) {
-		c.String(403, "")
+	}
+
+	lists, err := getList(userID)
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
 		return
 	}
 
-	var list list
-	if err := c.BindJSON(&list); err != nil {
-		c.String(400, "")
-		return
+	var exist bool
+	for _, i := range lists {
+		if i.List == data.New {
+			exist = true
+		}
 	}
-	list.Name = strings.TrimSpace(list.Name)
-
-	var exist string
-	err = db.QueryRow("SELECT id FROM list WHERE list = ? AND user_id = ? AND id != ?",
-		list.Name, userID, id).Scan(&exist)
 
 	var message string
 	switch {
-	case list.Name == "":
+	case data.New == "":
 		message = "New list name is empty."
-	case len(list.Name) > 15:
+	case data.Old == data.New:
+		message = "New list name is same as old list."
+	case len(data.New) > 15:
 		message = "List name exceeded length limit."
-	case err == nil:
-		message = fmt.Sprintf("List %s is already existed.", list.Name)
-	case err != sql.ErrNoRows:
-		log.Println("Failed to scan list:", err)
-		c.String(500, "")
-		return
+	case exist:
+		message = fmt.Sprintf("List %s is already existed.", data.New)
 	default:
-		if _, err := db.Exec("UPDATE list SET list = ? WHERE id = ? AND user_id = ?",
-			list.Name, id, userID); err != nil {
-			log.Println("Failed to edit list:", err)
+		ec := make(chan error, 1)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			_, err := collIncomplete.UpdateMany(ctx,
+				bson.M{"user": userID, "list": data.Old},
+				bson.M{"$set": bson.M{"list": data.New}},
+			)
+
+			ec <- err
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if _, err := collCompleted.UpdateMany(ctx,
+			bson.M{"user": userID, "list": data.Old},
+			bson.M{"$set": bson.M{"list": data.New}},
+		); err != nil {
+			log.Println("Failed to edit completed tasks list:", err)
 			c.String(500, "")
 			return
 		}
+
+		if err := <-ec; err != nil {
+			log.Println("Failed to edit incomplete tasks list:", err)
+			c.String(500, "")
+			return
+		}
+
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
+
 	c.JSON(200, gin.H{"status": 0, "message": message})
 }
 
 func deleteList(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		log.Println("Failed to get id param:", err)
+	var data struct{ List string }
+	if err := c.BindJSON(&data); err != nil {
+		log.Print(err)
 		c.String(400, "")
 		return
 	}
@@ -163,41 +172,35 @@ func deleteList(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkList(id, userID) {
-		if _, err := db.Exec("CALL delete_list(?)", id); err != nil {
-			log.Println("Failed to deleted list:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1})
-		return
-	}
-	c.String(403, "")
-}
-
-func reorderList(c *gin.Context) {
-	var reorder struct{ Old, New int }
-	if err := c.BindJSON(&reorder); err != nil {
-		c.String(400, "")
-		return
 	}
 
-	userID, _, err := getUser(c)
-	if err != nil {
-		log.Print(err)
-		c.String(500, "")
-		return
-	} else if !checkList(reorder.Old, userID) ||
-		!checkList(reorder.New, userID) {
-		c.String(403, "")
-		return
-	}
+	ec := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	if _, err := db.Exec("CALL list_reorder(?, ?, ?)",
-		userID, reorder.New, reorder.Old); err != nil {
-		log.Println("Failed to update seq:", err)
+		_, err := collIncomplete.DeleteMany(
+			ctx, bson.M{"user": userID, "list": data.List})
+
+		ec <- err
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := collCompleted.DeleteMany(
+		ctx, bson.M{"user": userID, "list": data.List}); err != nil {
+		log.Println("Failed to delete completed tasks list:", err)
 		c.String(500, "")
 		return
 	}
-	c.String(200, "1")
+
+	if err := <-ec; err != nil {
+		log.Println("Failed to delete incomplete tasks list:", err)
+		c.String(500, "")
+		return
+	}
+
+	c.JSON(200, gin.H{"status": 1})
+	return
 }

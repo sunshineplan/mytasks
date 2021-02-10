@@ -1,24 +1,26 @@
 package main
 
 import (
+	"context"
 	"log"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func checkCompleted(taskID, userID interface{}) bool {
-	var exist string
-	if err := db.QueryRow("SELECT task FROM completeds WHERE task_id = ? AND user_id = ?",
-		taskID, userID).Scan(&exist); err == nil {
-		return true
-	}
-	return false
+func checkCompleted(objecdID primitive.ObjectID, userID interface{}) bool {
+	return checkTask(objecdID, userID, true)
 }
 
 func moreCompleted(c *gin.Context) {
-	var option struct{ List, Start int }
-	if err := c.BindJSON(&option); err != nil {
+	var data struct {
+		List  string
+		Start int64
+	}
+	if err := c.BindJSON(&data); err != nil {
 		c.String(400, "")
 		return
 	}
@@ -28,38 +30,42 @@ func moreCompleted(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if !checkList(option.List, userID) {
-		c.String(403, "")
-		return
 	}
 
-	completed := []task{}
-	rows, err := db.Query(
-		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT ?, 30",
-		option.List, userID, option.Start)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cursor, err := collCompleted.Find(ctx,
+		bson.M{"list": data.List, "user": userID},
+		options.Find().SetSort(bson.M{"created": 1}).SetLimit(30).SetSkip(data.Start),
+	)
 	if err != nil {
-		log.Println("Failed to get completeds:", err)
+		log.Println("Failed to query tasks:", err)
 		c.String(500, "")
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var task task
-		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
-			log.Println("Failed to scan completeds:", err)
-			c.String(500, "")
-			return
-		}
-		completed = append(completed, task)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	tasks := []task{}
+	if err = cursor.All(ctx, &tasks); err != nil {
+		log.Println("Failed to get tasks:", err)
+		c.String(500, "")
+		return
 	}
-	c.JSON(200, completed)
+	for i := range tasks {
+		tasks[i].ID = tasks[i].ObjectID.Hex()
+	}
+
+	c.JSON(200, tasks)
 }
 
 func revertCompleted(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	objectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		log.Println("Failed to get id param:", err)
-		c.String(400, "")
+		log.Print(err)
+		c.String(500, "")
 		return
 	}
 
@@ -68,24 +74,36 @@ func revertCompleted(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(id, userID) {
-		var insertID int
-		if err := db.QueryRow("CALL revert_completed(?)", id).Scan(&insertID); err != nil || insertID == 0 {
-			log.Println("Failed to revert completed task:", err)
+	} else if checkCompleted(objectID, userID) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		var task task
+		if err := collCompleted.FindOneAndDelete(ctx, bson.M{"_id": objectID}).Decode(&task); err != nil {
+			log.Println("Failed to get completed task:", err)
 			c.String(500, "")
 			return
 		}
+
+		insertID, err := addTask(task, userID, false)
+		if err != nil {
+			log.Println("Failed to add incomplete task:", err)
+			c.String(500, "")
+			return
+		}
+
 		c.JSON(200, gin.H{"status": 1, "id": insertID})
 		return
 	}
+
 	c.String(403, "")
 }
 
 func deleteCompleted(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	objectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		log.Println("Failed to get id param:", err)
-		c.String(400, "")
+		log.Print(err)
+		c.String(500, "")
 		return
 	}
 
@@ -94,22 +112,24 @@ func deleteCompleted(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(id, userID) {
-		if _, err := db.Exec("DELETE FROM completed WHERE id = ?", id); err != nil {
+	} else if checkCompleted(objectID, userID) {
+		if err := deleteTask(objectID, userID, true); err != nil {
 			log.Println("Failed to delete completed task:", err)
 			c.String(500, "")
 			return
 		}
+
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
+
 	c.String(403, "")
 }
 
 func emptyCompleted(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		log.Println("Failed to get id param:", err)
+	var data struct{ List string }
+	if err := c.BindJSON(&data); err != nil {
+		log.Print(err)
 		c.String(400, "")
 		return
 	}
@@ -119,14 +139,18 @@ func emptyCompleted(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(id, userID) {
-		if _, err := db.Exec("DELETE FROM completed WHERE list_id = ?", id); err != nil {
-			log.Println("Failed to empty completed task:", err)
-			c.String(500, "")
-			return
-		}
-		c.JSON(200, gin.H{"status": 1})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := collCompleted.DeleteMany(
+		ctx, bson.M{"user": userID, "list": data.List}); err != nil {
+		log.Println("Failed to empty completed tasks:", err)
+		c.String(500, "")
 		return
 	}
-	c.String(403, "")
+
+	c.JSON(200, gin.H{"status": 1})
+	return
 }

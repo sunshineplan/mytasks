@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,8 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunshineplan/utils/archive"
 	"github.com/sunshineplan/utils/mail"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func addUser(username string) {
@@ -20,12 +21,30 @@ func addUser(username string) {
 	}
 
 	username = strings.TrimSpace(strings.ToLower(username))
-	if _, err := db.Exec("INSERT INTO user(username, uid) VALUES (?, ?)", username, username); err != nil {
-		if strings.Contains(err.Error(), "Duplicate entry") {
-			log.Fatalf("Username %s already exists.", username)
-		} else {
-			log.Fatalln("Failed to add user:", err)
-		}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	res, err := collAccount.InsertOne(ctx, bson.D{
+		{Key: "username", Value: username},
+		{Key: "password", Value: "123456"},
+		{Key: "uid", Value: username},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	objectID, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		log.Fatal("Failed to get last insert id.")
+	}
+	if _, err := collIncomplete.InsertOne(ctx, bson.D{
+		{Key: "task", Value: "Welcome to use mytasks!"},
+		{Key: "list", Value: "My Tasks"},
+		{Key: "created", Value: time.Now()},
+		{Key: "user", Value: objectID.Hex()},
+		{Key: "seq", Value: 1},
+	}); err != nil {
+		log.Fatal(err)
 	}
 	log.Print("Done!")
 }
@@ -37,13 +56,14 @@ func deleteUser(username string) {
 	}
 
 	username = strings.TrimSpace(strings.ToLower(username))
-	res, err := db.Exec("DELETE FROM user WHERE username = ?", username)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	res, err := collAccount.DeleteOne(ctx, bson.M{"username": username})
 	if err != nil {
 		log.Fatalln("Failed to delete user:", err)
-	}
-	if n, err := res.RowsAffected(); err != nil {
-		log.Fatalln("Failed to get affected rows:", err)
-	} else if n == 0 {
+	} else if res.DeletedCount == 0 {
 		log.Fatalf("User %s does not exist.", username)
 	}
 	log.Print("Done!")
@@ -77,19 +97,11 @@ func backup() {
 	}
 	defer os.Remove(tmpfile.Name())
 
-	b, err := ioutil.ReadFile(tmpfile.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-	var buf bytes.Buffer
-	if err := archive.Pack(&buf, archive.ZIP, archive.File{Name: "database", Body: b}); err != nil {
-		log.Fatal(err)
-	}
 	if err := dialer.Send(
 		&mail.Message{
 			To:          config.To,
 			Subject:     fmt.Sprintf("My Tasks Backup-%s", time.Now().Format("20060102")),
-			Attachments: []*mail.Attachment{{Bytes: buf.Bytes(), Filename: "backup.zip"}},
+			Attachments: []*mail.Attachment{{Path: tmpfile.Name(), Filename: "database"}},
 		},
 	); err != nil {
 		log.Fatalln("Failed to send mail:", err)
@@ -99,16 +111,8 @@ func backup() {
 
 func restore(file string) {
 	log.Print("Start!")
-	if file == "" {
-		file = joinPath(dir(self), "scripts/schema.sql")
-	} else {
-		if _, err := os.Stat(file); err != nil {
-			log.Fatalln("File not found:", err)
-		}
-	}
-	dropAll := joinPath(dir(self), "scripts/drop_all.sql")
-	if err := dbConfig.Restore(dropAll); err != nil {
-		log.Fatal(err)
+	if _, err := os.Stat(file); err != nil {
+		log.Fatalln("File not found:", err)
 	}
 	if err := dbConfig.Restore(file); err != nil {
 		log.Fatal(err)

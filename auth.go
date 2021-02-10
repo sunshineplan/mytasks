@@ -1,17 +1,21 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/sunshineplan/utils/password"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type user struct {
-	ID       int
+	ID       primitive.ObjectID `bson:"_id"`
 	Username string
 	Password string
 }
@@ -22,15 +26,22 @@ func authRequired(c *gin.Context) {
 	}
 }
 
-func getUser(c *gin.Context) (id int, username string, err error) {
+func getUser(c *gin.Context) (id, username string, err error) {
 	session := sessions.Default(c)
 	sid := session.Get("id")
 	username, _ = session.Get("username").(string)
 	if universal {
-		err = db.QueryRow("SELECT id FROM user WHERE uid = ?", sid).Scan(&id)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		var user user
+		if err = collAccount.FindOne(ctx, bson.M{"uid": sid}).Decode(&user); err != nil {
+			return
+		}
+		id = user.ID.Hex()
 		return
 	}
-	id, _ = sid.(int)
+	id, _ = sid.(string)
 	return
 }
 
@@ -45,17 +56,13 @@ func login(c *gin.Context) {
 	}
 	login.Username = strings.ToLower(login.Username)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	var user user
 	var message string
-	if err := db.QueryRow(
-		"SELECT id, username, password FROM user WHERE username = ?",
-		login.Username,
-	).Scan(&user.ID, &user.Username, &user.Password); err != nil {
-		if strings.Contains(err.Error(), "doesn't exist") {
-			restore("")
-			c.String(503, "Detected first time running. Initialized the database.")
-			return
-		} else if err == sql.ErrNoRows {
+	if err := collAccount.FindOne(ctx, bson.M{"username": login.Username}).Decode(&user); err != nil {
+		if err == mongo.ErrNoDocuments {
 			message = "Incorrect username"
 		} else {
 			log.Print(err)
@@ -63,26 +70,25 @@ func login(c *gin.Context) {
 			return
 		}
 	} else {
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)); err != nil {
-			if (err == bcrypt.ErrHashTooShort && user.Password != login.Password) ||
-				err == bcrypt.ErrMismatchedHashAndPassword {
-				message = "Incorrect password"
-			} else if user.Password != login.Password {
-				log.Print(err)
-				c.String(500, "Critical Error! Please contact your system administrator.")
-				return
-			}
+		ok, err := password.Compare(user.Password, login.Password, false)
+		if err != nil {
+			log.Print(err)
+			c.String(500, "Internal Server Error")
+			return
+		} else if !ok {
+			message = "Incorrect password"
 		}
+
 		if message == "" {
 			session := sessions.Default(c)
 			session.Clear()
-			session.Set("id", user.ID)
+			session.Set("id", user.ID.Hex())
 			session.Set("username", user.Username)
 
 			if login.Rememberme {
-				session.Options(sessions.Options{Path: "/", HttpOnly: true, MaxAge: 856400 * 365})
+				session.Options(sessions.Options{HttpOnly: true, MaxAge: 856400 * 365})
 			} else {
-				session.Options(sessions.Options{Path: "/", HttpOnly: true})
+				session.Options(sessions.Options{HttpOnly: true})
 			}
 
 			if err := session.Save(); err != nil {
@@ -108,9 +114,18 @@ func chgpwd(c *gin.Context) {
 
 	session := sessions.Default(c)
 	userID := session.Get("id")
+	objecdID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		log.Print(err)
+		c.String(500, "")
+		return
+	}
 
-	var oldPassword string
-	if err := db.QueryRow("SELECT password FROM user WHERE id = ?", userID).Scan(&oldPassword); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user user
+	if err := collAccount.FindOne(ctx, bson.M{"_id": objecdID}).Decode(&user); err != nil {
 		log.Print(err)
 		c.String(500, "")
 		return
@@ -118,39 +133,33 @@ func chgpwd(c *gin.Context) {
 
 	var message string
 	var errorCode int
-	err := bcrypt.CompareHashAndPassword([]byte(oldPassword), []byte(data.Password))
-	switch {
-	case err != nil && data.Password != oldPassword:
-		if err == bcrypt.ErrHashTooShort || err == bcrypt.ErrMismatchedHashAndPassword {
-			message = "Incorrect password."
+	newPassword, err := password.Change(user.Password, data.Password, data.Password1, data.Password2, false)
+	if err != nil {
+		message = err.Error()
+		switch err {
+		case password.ErrIncorrectPassword:
 			errorCode = 1
-		} else {
+		case password.ErrConfirmPasswordNotMatch, password.ErrSamePassword:
+			errorCode = 2
+		case password.ErrBlankPassword:
+		default:
 			log.Print(err)
-			c.String(500, "")
+			c.String(500, "Internal Server Error")
 			return
 		}
-	case data.Password1 != data.Password2:
-		message = "Confirm password doesn't match new password."
-		errorCode = 2
-	case data.Password1 == data.Password:
-		message = "New password cannot be the same as your current password."
-		errorCode = 2
-	case data.Password1 == "":
-		message = "New password cannot be blank."
 	}
 
 	if message == "" {
-		newPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password1), bcrypt.MinCost)
-		if err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if _, err := collAccount.UpdateOne(
+			ctx, bson.M{"_id": objecdID}, bson.M{"$set": bson.M{"password": newPassword}}); err != nil {
 			log.Print(err)
 			c.String(500, "")
 			return
 		}
-		if _, err := db.Exec("UPDATE user SET password = ? WHERE id = ?", string(newPassword), userID); err != nil {
-			log.Print(err)
-			c.String(500, "")
-			return
-		}
+
 		session.Clear()
 		session.Options(sessions.Options{MaxAge: -1})
 		if err := session.Save(); err != nil {
@@ -158,8 +167,10 @@ func chgpwd(c *gin.Context) {
 			c.String(500, "")
 			return
 		}
+
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
+
 	c.JSON(200, gin.H{"status": 0, "message": message, "error": errorCode})
 }

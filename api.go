@@ -28,8 +28,8 @@ func info(c *gin.Context) {
 }
 
 func get(c *gin.Context) {
-	var option task
-	if err := c.BindJSON(&option); err != nil {
+	var data task
+	if err := c.BindJSON(&data); err != nil {
 		c.String(400, "")
 		return
 	}
@@ -39,9 +39,6 @@ func get(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if !checkList(option.List, userID) {
-		c.String(403, "")
-		return
 	}
 
 	incomplete := []task{}
@@ -49,44 +46,20 @@ func get(c *gin.Context) {
 
 	ec := make(chan error, 1)
 	go func() {
-		rows, err := db.Query(
-			"SELECT task_id, task, list_id, created FROM tasks WHERE list_id = ? AND user_id = ?",
-			option.List, userID)
-		if err != nil {
-			ec <- err
-			return
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var task task
-			if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
-				ec <- err
-				return
-			}
-			incomplete = append(incomplete, task)
-		}
-		ec <- nil
+		var err error
+		incomplete, err = getTask(data.List, userID, false)
+		ec <- err
 	}()
-	rows, err := db.Query(
-		"SELECT task_id, task, list_id, created FROM completeds WHERE list_id = ? AND user_id = ? LIMIT 10",
-		option.List, userID)
+
+	completed, err = getTask(data.List, userID, true)
 	if err != nil {
-		log.Println("Failed to get completeds:", err)
+		log.Println("Failed to get completed tasks:", err)
 		c.String(500, "")
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var task task
-		if err := rows.Scan(&task.ID, &task.Task, &task.List, &task.Created); err != nil {
-			log.Println("Failed to scan completeds:", err)
-			c.String(500, "")
-			return
-		}
-		completed = append(completed, task)
-	}
+
 	if err := <-ec; err != nil {
-		log.Println("Failed to get tasks:", err)
+		log.Println("Failed to get incomplete tasks:", err)
 		c.String(500, "")
 		return
 	}

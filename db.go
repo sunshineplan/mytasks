@@ -1,27 +1,31 @@
 package main
 
 import (
-	"database/sql"
-	"time"
-
-	"github.com/sunshineplan/utils/database/mysql"
+	"github.com/sunshineplan/utils/database/mongodb"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var dbConfig mysql.Config
-var db *sql.DB
+var dbConfig mongodb.Config
+var collAccount *mongo.Collection
+var collIncomplete *mongo.Collection
+var collCompleted *mongo.Collection
 
 func initDB() (err error) {
-	if err = meta.Get("mytasks_mysql", &dbConfig); err != nil {
+	if err = meta.Get("mytasks_mongo", &dbConfig); err != nil {
 		return
 	}
 
-	db, err = dbConfig.Open()
+	var client *mongo.Client
+	client, err = dbConfig.Open()
 	if err != nil {
 		return
 	}
-	db.SetConnMaxLifetime(time.Minute * 1)
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(10)
+
+	database := client.Database(dbConfig.Database)
+
+	collAccount = database.Collection("account")
+	collIncomplete = database.Collection("incomplete")
+	collCompleted = database.Collection("completed")
 
 	return
 }
