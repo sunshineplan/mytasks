@@ -28,8 +28,8 @@
   const onUpdate = async (event: Sortable.SortableEvent) => {
     const resp = await post("/task/reorder", {
       list: $current.list,
-      old: incompleteTasks[event.oldIndex as number].id,
-      new: incompleteTasks[event.newIndex as number].id,
+      orig: incompleteTasks[event.oldIndex as number].id,
+      dest: incompleteTasks[event.newIndex as number].id,
     });
     if ((await resp.text()) == "1") {
       const task = incompleteTasks[event.oldIndex as number];
