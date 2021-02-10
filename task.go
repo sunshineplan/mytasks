@@ -21,37 +21,6 @@ type task struct {
 	Seq      int                `json:"-"`
 }
 
-func deleteTask(objectID primitive.ObjectID, userID string, completed bool) error {
-	var collection *mongo.Collection
-	if completed {
-		collection = collCompleted
-	} else {
-		collection = collIncomplete
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var task task
-	if err := collection.FindOneAndDelete(ctx, bson.M{"_id": objectID}).Decode(&task); err != nil {
-		return err
-	}
-
-	if !completed {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if _, err := collection.UpdateMany(ctx,
-			bson.M{"user": userID, "list": task.List, "seq": bson.M{"$gt": task.Seq}},
-			bson.M{"$inc": bson.M{"seq": -1}},
-		); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func checkTask(objecdID primitive.ObjectID, userID interface{}, completed bool) bool {
 	var collection *mongo.Collection
 	if completed {
@@ -78,10 +47,10 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 	var opts *options.FindOptions
 	if completed {
 		collection = collCompleted
-		opts = options.Find().SetSort(bson.M{"created": 1}).SetLimit(10)
+		opts = options.Find().SetSort(bson.M{"created": -1}).SetLimit(10)
 	} else {
 		collection = collIncomplete
-		opts = options.Find().SetSort(bson.M{"seq": 1})
+		opts = options.Find().SetSort(bson.M{"seq": -1})
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -89,7 +58,6 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 
 	cursor, err := collection.Find(ctx, bson.M{"list": list, "user": userID}, opts)
 	if err != nil {
-		log.Println("Failed to query tasks:", err)
 		return nil, err
 	}
 
@@ -98,7 +66,6 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 
 	tasks := []task{}
 	if err = cursor.All(ctx, &tasks); err != nil {
-		log.Println("Failed to get tasks:", err)
 		return nil, err
 	}
 	for i := range tasks {
@@ -112,6 +79,7 @@ func addTask(t task, userID string, completed bool) (string, error) {
 	document := bson.D{
 		{Key: "task", Value: t.Task},
 		{Key: "list", Value: t.List},
+		{Key: "user", Value: userID},
 		{Key: "created", Value: time.Now()},
 	}
 
@@ -164,6 +132,37 @@ func addTask(t task, userID string, completed bool) (string, error) {
 	return insertID.Hex(), nil
 }
 
+func deleteTask(objectID primitive.ObjectID, userID string, completed bool) error {
+	var collection *mongo.Collection
+	if completed {
+		collection = collCompleted
+	} else {
+		collection = collIncomplete
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var task task
+	if err := collection.FindOneAndDelete(ctx, bson.M{"_id": objectID}).Decode(&task); err != nil {
+		return err
+	}
+
+	if !completed {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if _, err := collection.UpdateMany(ctx,
+			bson.M{"user": userID, "list": task.List, "seq": bson.M{"$gt": task.Seq}},
+			bson.M{"$inc": bson.M{"seq": -1}},
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
 	var origTask, destTask task
 
@@ -202,7 +201,6 @@ func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
 	defer cancel()
 
 	if _, err := collIncomplete.UpdateMany(ctx, filter, update); err != nil {
-		log.Println("Failed to reorder tasks:", err)
 		return err
 	}
 
@@ -211,7 +209,6 @@ func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
 
 	if _, err := collIncomplete.UpdateOne(
 		ctx, bson.M{"_id": orig}, bson.M{"$set": bson.M{"seq": destTask.Seq}}); err != nil {
-		log.Println("Failed to reorder task:", err)
 		return err
 	}
 

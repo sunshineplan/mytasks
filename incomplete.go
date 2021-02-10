@@ -174,7 +174,7 @@ func reorder(c *gin.Context) {
 	}
 
 	if err := reorderTask(userID, data.List, orig, dest); err != nil {
-		log.Println("Failed to task reorder:", err)
+		log.Println("Failed to reorder tasks:", err)
 		c.String(500, "")
 		return
 	}
