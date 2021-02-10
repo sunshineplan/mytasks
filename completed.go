@@ -119,7 +119,7 @@ func emptyCompleted(c *gin.Context) {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(id, userID) {
+	} else if checkCompleted(id, userID) { // there is a bug
 		if _, err := db.Exec("DELETE FROM completed WHERE list_id = ?", id); err != nil {
 			log.Println("Failed to empty completed task:", err)
 			c.String(500, "")
