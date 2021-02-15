@@ -1,7 +1,7 @@
 #! /bin/bash
 
 installSoftware() {
-    apt -qq -y install nginx default-mysql-client
+    apt -qq -y install nginx mongodb-org-tools
 }
 
 installMyTasks() {
@@ -36,7 +36,7 @@ configMyTasks() {
     sed "s,\$server,$server," /var/www/mytasks/config.ini.default > /var/www/mytasks/config.ini
     sed -i "s/\$header/$header/" /var/www/mytasks/config.ini
     sed -i "s/\$value/$value/" /var/www/mytasks/config.ini
-    sed -i "s/\$universal/$universal/" /var/www/mystocks/config.ini
+    sed -i "s/\$universal/$universal/" /var/www/mytasks/config.ini
     sed -i "s,\$unix,$unix," /var/www/mytasks/config.ini
     sed -i "s,\$log,$log," /var/www/mytasks/config.ini
     sed -i "s/\$host/$host/" /var/www/mytasks/config.ini
