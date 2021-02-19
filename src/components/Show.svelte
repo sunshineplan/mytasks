@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
-  import { fire, confirm, post } from "../misc";
+  import { fire, confirm, post, pasteText } from "../misc";
   import { current, loading, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
@@ -120,6 +120,7 @@
     span.classList.add("task");
     span.style.paddingLeft = "48px";
     li.appendChild(span);
+    li.addEventListener("paste", pasteText);
     li.addEventListener("keydown", async (event) => {
       if (event.key == "Enter" || event.key == "Escape") {
         event.preventDefault();
@@ -237,6 +238,7 @@
         class:editable
         contenteditable={editable}
         on:keydown={listKeydown}
+        on:paste={pasteText}
       >
         {$current.list}
       </span>

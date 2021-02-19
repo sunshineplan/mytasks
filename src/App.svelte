@@ -63,7 +63,9 @@
 </nav>
 {#await promise then _}
   {#if !$user}
-    <Login on:info={getInfo} />
+    {#if !$loading}
+      <Login on:info={getInfo} />
+    {/if}
   {:else}
     <Sidebar on:reload={getInfo} />
     <div

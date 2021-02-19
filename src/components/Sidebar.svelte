@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { pasteText } from "../misc";
   import { current, component, showSidebar, lists } from "../stores";
   import type { List } from "../stores";
 
@@ -35,6 +36,7 @@
     const li = document.createElement("li");
     li.classList.add("nav-link", "new");
     ul.appendChild(li);
+    li.addEventListener("paste", pasteText);
     li.addEventListener("keydown", async (event) => {
       const target = event.target as Element;
       const list = (target.textContent as string).trim();

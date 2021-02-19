@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { fire, confirm, post } from "../misc";
+  import { fire, confirm, post, pasteText } from "../misc";
   import { current, loading, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
@@ -115,6 +115,7 @@
     class="task"
     contenteditable={task.id === selected}
     on:keydown={handleKeydown}
+    on:paste={pasteText}
   >
     {task.task}
   </span>
