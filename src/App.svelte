@@ -75,7 +75,7 @@
     </div>
   {/if}
 {/await}
-<div class="loading" hidden={!$loading}>
+<div class={$user ? "loading" : "initializing"} hidden={!$loading}>
   <div class="sk-wave sk-center">
     <div class="sk-wave-rect" />
     <div class="sk-wave-rect" />
@@ -120,6 +120,14 @@
   .brand:hover {
     color: white;
     text-decoration: none;
+  }
+
+  .initializing {
+    position: fixed;
+    top: 70px;
+    height: calc(100% - 70px);
+    width: 100%;
+    display: flex;
   }
 
   .loading {
