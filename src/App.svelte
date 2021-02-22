@@ -17,12 +17,12 @@
   const getInfo = async () => {
     $loading++;
     const resp = await fetch("/info");
-    $loading--;
     const info = await resp.json();
     if (Object.keys(info).length) {
       $user = info.username;
       $lists = info.lists;
     } else reset();
+    $loading--;
     if ($lists.length) if (!$current.list) $current = $lists[0];
   };
   const promise = getInfo();
