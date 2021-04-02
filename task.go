@@ -185,7 +185,7 @@ func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
 	}
 
 	if origTask.List != list || destTask.List != list {
-		return errors.New("List not match")
+		return errors.New("list not match")
 	}
 
 	var filter, update bson.M

@@ -41,9 +41,7 @@ func get(c *gin.Context) {
 		return
 	}
 
-	incomplete := []task{}
-	completed := []task{}
-
+	var incomplete []task
 	ec := make(chan error, 1)
 	go func() {
 		var err error
@@ -51,7 +49,7 @@ func get(c *gin.Context) {
 		ec <- err
 	}()
 
-	completed, err = getTask(data.List, userID, true)
+	completed, err := getTask(data.List, userID, true)
 	if err != nil {
 		log.Println("Failed to get completed tasks:", err)
 		c.String(500, "")

@@ -37,7 +37,6 @@ func addIncomplete(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": 1, "id": insertID})
-	return
 }
 
 func editIncomplete(c *gin.Context) {
