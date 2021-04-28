@@ -162,6 +162,7 @@
     outline: 0;
     display: inline-block;
     min-width: 10px;
+    word-break: break-word;
   }
 
   :global(.list-group-item) {
