@@ -117,10 +117,6 @@
     font-size: 25px;
     letter-spacing: 0.3px;
     color: white;
-  }
-
-  .brand:hover {
-    color: white;
     text-decoration: none;
   }
 

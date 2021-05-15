@@ -69,8 +69,8 @@
     <hr />
   </header>
   <div class="form" class:was-validated={validated}>
-    <div class="form-group">
-      <label for="password">Current Password</label>
+    <div class="mb-3">
+      <label class="form-label" for="password">Current Password</label>
       <!-- svelte-ignore a11y-autofocus -->
       <input
         class="form-control"
@@ -83,8 +83,8 @@
       />
       <div class="invalid-feedback">This field is required.</div>
     </div>
-    <div class="form-group">
-      <label for="password1">New Password</label>
+    <div class="mb-3">
+      <label class="form-label" for="password1">New Password</label>
       <input
         class="form-control"
         type="password"
@@ -95,8 +95,8 @@
       />
       <div class="invalid-feedback">This field is required.</div>
     </div>
-    <div class="form-group">
-      <label for="password2">Confirm Password</label>
+    <div class="mb-3">
+      <label class="form-label" for="password2">Confirm Password</label>
       <input
         class="form-control"
         type="password"

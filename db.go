@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/sunshineplan/utils"
 	"github.com/sunshineplan/utils/database/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -11,7 +12,9 @@ var collIncomplete *mongo.Collection
 var collCompleted *mongo.Collection
 
 func initDB() (err error) {
-	if err = meta.Get("mytasks_mongo", &dbConfig); err != nil {
+	if err = utils.Retry(func() error {
+		return meta.Get("mytasks_mongo", &dbConfig)
+	}, 3, 20); err != nil {
 		return
 	}
 

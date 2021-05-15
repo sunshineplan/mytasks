@@ -2,7 +2,7 @@ name: Release
 
 on:
   workflow_run:
-    workflows: [ "Test" ]
+    workflows: [ Test ]
     branches: [ main ]
     types: 
       - completed
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v1
         with:
-          node-version: '15'
+          node-version: '16'
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -60,30 +60,15 @@ jobs:
           npm run build
           go mod download
           go build -ldflags "-s -w"
+          tar cvzf release.tar.gz public scripts mytasks config.ini.default
           echo "::set-output name=date::$(TZ=CST date +'%Y-%m-%d')"
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v1.0
-          release_name: ${{ steps.build.outputs.date }}
+          name: ${{ steps.build.outputs.date }}
           body: ${{ steps.build.outputs.date }}
-          draft: false
-          prerelease: false
-
-      - name: Zip release files
-        run: |
-          tar cvzf release.tar.gz public scripts mytasks config.ini.default
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release.tar.gz
-          asset_name: release.tar.gz
-          asset_content_type: application/gzip
+          files: release.tar.gz

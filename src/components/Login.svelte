@@ -10,15 +10,15 @@
 
   const login = async () => {
     if (
-      !(document.querySelector(
-        "#username"
-      ) as HTMLSelectElement).checkValidity()
+      !(
+        document.querySelector("#username") as HTMLSelectElement
+      ).checkValidity()
     )
       await fire("Error", "Username cannot be empty.", "error");
     else if (
-      !(document.querySelector(
-        "#password"
-      ) as HTMLSelectElement).checkValidity()
+      !(
+        document.querySelector("#password") as HTMLSelectElement
+      ).checkValidity()
     )
       await fire("Error", "Password cannot be empty.", "error");
     else {
@@ -58,8 +58,8 @@
     </h3>
   </header>
   <div class="login">
-    <div class="form-group">
-      <label for="username">Username</label>
+    <div class="mb-3">
+      <label class="form-label" for="username">Username</label>
       <!-- svelte-ignore a11y-autofocus -->
       <input
         class="form-control"
@@ -71,8 +71,8 @@
         required
       />
     </div>
-    <div class="form-group">
-      <label for="password">Password</label>
+    <div class="mb-3">
+      <label class="form-label" for="password">Password</label>
       <input
         class="form-control"
         type="password"
