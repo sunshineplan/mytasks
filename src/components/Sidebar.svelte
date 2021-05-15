@@ -4,7 +4,6 @@
   import type { List } from "../stores";
 
   let hover = false;
-  let smallSize = window.innerWidth <= 900;
 
   const toggle = () => {
     $showSidebar = !$showSidebar;
@@ -59,10 +58,6 @@
     sel.addRange(range);
   };
 
-  const checkSize = () => {
-    if (smallSize != window.innerWidth <= 900)
-      smallSize = window.innerWidth <= 900;
-  };
   const handleKeydown = async (event: KeyboardEvent) => {
     if (event.key == "ArrowUp" || event.key == "ArrowDown") {
       const newList = document.querySelector(".new");
@@ -93,30 +88,21 @@
   };
 </script>
 
-<svelte:window
-  on:keydown={handleKeydown}
-  on:resize={checkSize}
-  on:click={handleClick}
-/>
+<svelte:window on:keydown={handleKeydown} on:click={handleClick} />
 
-{#if smallSize}
-  <span
-    class="toggle"
-    on:click={toggle}
-    on:mouseenter={() => (hover = true)}
-    on:mouseleave={() => (hover = false)}
-  >
-    <svg viewBox="0 0 70 70" width="40" height="30">
-      {#each [10, 30, 50] as y}
-        <rect {y} width="100%" height="10" fill={hover ? "#1a73e8" : "white"} />
-      {/each}
-    </svg>
-  </span>
-{/if}
-<nav
-  class="nav flex-column navbar-light sidebar"
-  hidden={!$showSidebar && smallSize}
+<span
+  class="toggle"
+  on:click={toggle}
+  on:mouseenter={() => (hover = true)}
+  on:mouseleave={() => (hover = false)}
 >
+  <svg viewBox="0 0 70 70" width="40" height="30">
+    {#each [10, 30, 50] as y}
+      <rect {y} width="100%" height="10" fill={hover ? "#1a73e8" : "white"} />
+    {/each}
+  </svg>
+</span>
+<nav class="nav flex-column navbar-light sidebar" class:show={$showSidebar}>
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav" id="lists">
@@ -135,6 +121,7 @@
 
 <style>
   .toggle {
+    display: none;
     position: fixed;
     z-index: 100;
     top: 0;
@@ -201,15 +188,19 @@
     background-color: #eaf5fd;
   }
 
-  @media (min-width: 901px) {
-    .sidebar {
-      display: block !important;
-    }
-  }
-
   @media (max-width: 900px) {
+    .toggle {
+      display: block;
+    }
+
     .sidebar {
+      left: -100%;
+      transition: left 0.3s ease-in-out;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .show {
+      left: 0;
     }
   }
 </style>

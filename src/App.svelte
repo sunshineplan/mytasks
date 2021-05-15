@@ -49,7 +49,7 @@
 
 <nav class="navbar navbar-light topbar">
   <div class="d-flex" style="height: 100%">
-    <a class="brand" href="/">My Tasks</a>
+    <a class="brand" class:user={$user} href="/">My Tasks</a>
   </div>
   {#if $user}
     <div class="navbar-nav flex-row">
@@ -213,7 +213,7 @@
   }
 
   @media (max-width: 900px) {
-    .brand {
+    .brand.user {
       padding-left: 90px;
     }
 
