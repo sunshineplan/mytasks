@@ -22,12 +22,13 @@ var server httpsvr.Server
 var meta metadata.Server
 
 var svc = service.Service{
-	Name: "MyTasks",
-	Desc: "Instance to serve My Tasks",
-	Exec: run,
+	Name:     "MyTasks",
+	Desc:     "Instance to serve My Tasks",
+	Exec:     run,
+	TestExec: test,
 	Options: service.Options{
 		Dependencies: []string{"Wants=network-online.target", "After=network.target"},
-		Others:       []string{"Environment=GIN_MODE=release"},
+		Environment:  map[string]string{"GIN_MODE": "release"},
 	},
 }
 
@@ -68,11 +69,13 @@ func main() {
 
 	switch flag.NArg() {
 	case 0:
-		run()
+		svc.Run(false)
 	case 1:
 		switch flag.Arg(0) {
-		case "run", "debug":
-			run()
+		case "run":
+			svc.Run(false)
+		case "debug":
+			svc.Run(true)
 		case "install":
 			err = svc.Install()
 		case "remove":
@@ -85,8 +88,8 @@ func main() {
 			err = svc.Restart()
 		case "update":
 			err = svc.Update()
-		case "backup":
-			backup()
+		case "add", "delete", "backup", "restore":
+			log.Fatalf("%s need two arguments", flag.Arg(0))
 		default:
 			log.Fatalln("Unknown argument:", flag.Arg(0))
 		}
@@ -102,6 +105,8 @@ func main() {
 			if utils.Confirm("Do you want to restore database?", 3) {
 				restore(flag.Arg(1))
 			}
+		case "backup":
+			backup(flag.Arg(1))
 		default:
 			log.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
 		}

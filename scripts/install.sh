@@ -6,7 +6,7 @@ installSoftware() {
 
 installMyTasks() {
     mkdir -p /var/www/mytasks
-    curl -Lo- https://github.com/sunshineplan/mytasks/releases/download/v1.0/release.tar.gz | tar zxC /var/www/mytasks
+    curl -Lo- https://github.com/sunshineplan/mytasks/releases/latest/download/release.tar.gz | tar zxC /var/www/mytasks
     cd /var/www/mytasks
     chmod +x mytasks
 }
@@ -62,11 +62,6 @@ writeLogrotateScrip() {
     fi
 }
 
-createCronTask() {
-    cp -s /var/www/mytasks/scripts/mytasks.cron /etc/cron.monthly/mytasks
-    chmod +x /var/www/mytasks/scripts/mytasks.cron
-}
-
 setupNGINX() {
     cp -s /var/www/mytasks/scripts/mytasks.conf /etc/nginx/conf.d
     sed -i "s/\$domain/$domain/" /var/www/mytasks/scripts/mytasks.conf
@@ -80,7 +75,6 @@ main() {
     installMyTasks
     configMyTasks
     writeLogrotateScrip
-    createCronTask
     setupNGINX
 }
 

@@ -32,3 +32,12 @@ func initDB() (err error) {
 
 	return
 }
+
+func test() error {
+	if err := meta.Get("mytasks_mongo", &dbConfig); err != nil {
+		return err
+	}
+
+	_, err := dbConfig.Open()
+	return err
+}
