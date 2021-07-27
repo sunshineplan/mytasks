@@ -63,8 +63,10 @@ export const post = async (url: string, data?: object, universal?: boolean) => {
 }
 
 export const pasteText = (event: ClipboardEvent) => {
-  event.preventDefault()
-  if (event.clipboardData) {
-    document.execCommand('insertHTML', false, event.clipboardData.getData('text/plain'))
+  if (document.execCommand) {
+    event.preventDefault()
+    if (event.clipboardData) {
+      document.execCommand('insertHTML', false, event.clipboardData.getData('text/plain'))
+    }
   }
 }
