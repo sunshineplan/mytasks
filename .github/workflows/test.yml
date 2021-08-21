@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -21,14 +22,14 @@ jobs:
         with:
           node-version: '16'
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: '1.x'
 
       - name: Test Node Code
         run: |
-          npm i --no-package-lock
+          npm install
           npm run build
 
       - name: Test Go Code
