@@ -33,7 +33,7 @@ jobs:
 
       - name: Test Go Code
         run: |
-          go build -v
+          go build -v ./...
 
   merge:
     if: ${{ github.actor == 'dependabot[bot]' }}
