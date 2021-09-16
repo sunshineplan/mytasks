@@ -10,7 +10,7 @@
   let rememberme = false;
 
   onMount(() => {
-    if (Cookies.get("rememberme") == "true") rememberme = true;
+    rememberme = Cookies.get("rememberme") == "true" ? true : false;
   });
 
   const login = async () => {
