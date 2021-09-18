@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/pem"
 	"log"
 	"net/http"
 	"os"
@@ -64,11 +65,14 @@ func run() {
 	}
 
 	if priv != nil {
-		pubkey_bytes, err := x509.MarshalPKIXPublicKey(priv.PublicKey)
+		pubkey_bytes, err := x509.MarshalPKIXPublicKey(&priv.PublicKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-		js = bytes.ReplaceAll(js, []byte("@pubkey@"), []byte(pubkey_bytes))
+		js = bytes.ReplaceAll(js, []byte("@pubkey@"), pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PUBLIC KEY",
+			Bytes: pubkey_bytes,
+		}))
 	} else {
 		js = bytes.ReplaceAll(js, []byte("@pubkey@"), nil)
 	}
