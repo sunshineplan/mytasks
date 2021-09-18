@@ -70,7 +70,12 @@ func login(c *gin.Context) {
 			return
 		}
 	} else {
-		ok, err := password.Compare(user.Password, login.Password, false)
+		var ok bool
+		if priv == nil {
+			ok, err = password.Compare(user.Password, login.Password, false)
+		} else {
+			ok, err = password.CompareRSA(user.Password, login.Password, false, priv)
+		}
 		if err != nil {
 			log.Print(err)
 			c.String(500, "Internal Server Error")
@@ -131,9 +136,13 @@ func chgpwd(c *gin.Context) {
 		return
 	}
 
-	var message string
+	var message, newPassword string
 	var errorCode int
-	newPassword, err := password.Change(user.Password, data.Password, data.Password1, data.Password2, false)
+	if priv == nil {
+		newPassword, err = password.Change(user.Password, data.Password, data.Password1, data.Password2, false)
+	} else {
+		newPassword, err = password.ChangeRSA(user.Password, data.Password, data.Password1, data.Password2, false, priv)
+	}
 	if err != nil {
 		message = err.Error()
 		switch err {

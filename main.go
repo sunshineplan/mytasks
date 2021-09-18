@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"log"
@@ -17,9 +20,10 @@ import (
 
 var self string
 var universal bool
-var logPath string
+var pemPath, logPath string
 var server httpsvr.Server
 var meta metadata.Server
+var priv *rsa.PrivateKey
 
 var svc = service.Service{
 	Name:     "MyTasks",
@@ -51,6 +55,7 @@ func main() {
 	flag.StringVar(&server.Unix, "unix", "", "UNIX-domain Socket")
 	flag.StringVar(&server.Host, "host", "0.0.0.0", "Server Host")
 	flag.StringVar(&server.Port, "port", "12345", "Server Port")
+	flag.StringVar(&pemPath, "pem", "", "PEM File Path")
 	flag.StringVar(&svc.Options.UpdateURL, "update", "", "Update URL")
 	exclude := flag.String("exclude", "", "Exclude Files")
 	//flag.StringVar(&logPath, "log", joinPath(dir(self), "access.log"), "Log Path")
@@ -60,6 +65,20 @@ func main() {
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
+	if pemPath != "" {
+		b, err := os.ReadFile(pemPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(b)
+		if block == nil {
+			log.Fatal("no PEM data is found")
+		}
+		priv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	svc.Options.ExcludeFiles = strings.Split(*exclude, ",")
 
 	if service.IsWindowsService() {

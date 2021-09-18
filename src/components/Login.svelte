@@ -1,4 +1,5 @@
 <script lang="ts">
+  import JSEncrypt from "jsencrypt";
   import { createEventDispatcher } from "svelte";
   import { fire, post } from "../misc";
 
@@ -7,6 +8,7 @@
   let username = "";
   let password = "";
   let rememberme = localStorage.getItem("rememberme") == "true" ? true : false;
+  let pubkey = "@pubkey@";
 
   const login = async () => {
     if (
@@ -22,11 +24,14 @@
     )
       await fire("Error", "Password cannot be empty.", "error");
     else {
+      var pwd: string;
+      if (pubkey) pwd = encrypt(password) as string;
+      else pwd = password;
       const resp = await post(
         "@universal@/login",
         {
           username,
-          password,
+          password: pwd,
           rememberme,
         },
         true
@@ -40,6 +45,12 @@
         } else await fire("Error", json.message, "error");
       } else await fire("Error", await resp.text(), "error");
     }
+  };
+
+  const encrypt = (password: string) => {
+    const encrypt = new JSEncrypt();
+    encrypt.setPublicKey(pubkey);
+    return encrypt.encrypt(password);
   };
 
   const handleEnter = async (event: KeyboardEvent) => {
