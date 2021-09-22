@@ -26,3 +26,5 @@ export const reset = () => {
     lists.set([])
     tasks.set({})
 }
+
+export const pubkey = "@pubkey@"
