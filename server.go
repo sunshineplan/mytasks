@@ -69,10 +69,17 @@ func run() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		js = bytes.ReplaceAll(js, []byte("@pubkey@"), pem.EncodeToMemory(&pem.Block{
-			Type:  "RSA PUBLIC KEY",
-			Bytes: pubkey_bytes,
-		}))
+		js = bytes.ReplaceAll(
+			js, []byte("@pubkey@"),
+			bytes.ReplaceAll(
+				pem.EncodeToMemory(&pem.Block{
+					Type:  "RSA PUBLIC KEY",
+					Bytes: pubkey_bytes,
+				}),
+				[]byte{'\n'},
+				nil,
+			),
+		)
 	} else {
 		js = bytes.ReplaceAll(js, []byte("@pubkey@"), nil)
 	}

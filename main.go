@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sunshineplan/password"
 	"github.com/sunshineplan/service"
 	"github.com/sunshineplan/utils"
 	"github.com/sunshineplan/utils/httpsvr"
@@ -21,6 +22,7 @@ import (
 var self string
 var universal bool
 var pemPath, logPath string
+var maxRetry int
 var server httpsvr.Server
 var meta metadata.Server
 var priv *rsa.PrivateKey
@@ -51,6 +53,7 @@ func main() {
 	flag.StringVar(&meta.Addr, "server", "", "Metadata Server Address")
 	flag.StringVar(&meta.Header, "header", "", "Verify Header Header Name")
 	flag.StringVar(&meta.Value, "value", "", "Verify Header Value")
+	flag.IntVar(&maxRetry, "retry", 5, "Max number of retries on wrong password")
 	flag.BoolVar(&universal, "universal", false, "Use Universal account id or not")
 	flag.StringVar(&server.Unix, "unix", "", "UNIX-domain Socket")
 	flag.StringVar(&server.Host, "host", "0.0.0.0", "Server Host")
@@ -65,6 +68,7 @@ func main() {
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
+	password.SetMaxAttempts(maxRetry)
 	if pemPath != "" {
 		b, err := os.ReadFile(pemPath)
 		if err != nil {

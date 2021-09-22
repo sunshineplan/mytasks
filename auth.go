@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -56,6 +58,11 @@ func login(c *gin.Context) {
 	}
 	login.Username = strings.ToLower(login.Username)
 
+	if password.IsMaxAttempts(c.ClientIP() + login.Username) {
+		c.JSON(200, gin.H{"status": 0, "message": fmt.Sprintf("Max retries exceeded (%d)", maxRetry)})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -70,18 +77,19 @@ func login(c *gin.Context) {
 			return
 		}
 	} else {
-		var ok bool
 		if priv == nil {
-			ok, err = password.Compare(user.Password, login.Password, false)
+			_, err = password.Compare(c.ClientIP()+login.Username, user.Password, login.Password, false)
 		} else {
-			ok, err = password.CompareRSA(user.Password, login.Password, false, priv)
+			_, err = password.CompareRSA(c.ClientIP()+login.Username, user.Password, login.Password, false, priv)
 		}
 		if err != nil {
-			log.Print(err)
-			c.String(500, "Internal Server Error")
-			return
-		} else if !ok {
-			message = "Incorrect password"
+			if errors.Is(err, password.ErrIncorrectPassword) {
+				message = err.Error()
+			} else {
+				log.Print(err)
+				c.String(500, "Internal Server Error")
+				return
+			}
 		}
 
 		if message == "" {
@@ -111,14 +119,24 @@ func login(c *gin.Context) {
 }
 
 func chgpwd(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, username := session.Get("id"), session.Get("username")
+	if userID == nil || username == nil {
+		c.String(401, "")
+		return
+	}
+
+	if password.IsMaxAttempts(c.ClientIP() + username.(string)) {
+		c.JSON(200, gin.H{"status": 0, "message": fmt.Sprintf("Max retries exceeded (%d)", maxRetry), "error": 1})
+		return
+	}
+
 	var data struct{ Password, Password1, Password2 string }
 	if err := c.BindJSON(&data); err != nil {
 		c.String(400, "")
 		return
 	}
 
-	session := sessions.Default(c)
-	userID := session.Get("id")
 	objecdID, err := primitive.ObjectIDFromHex(userID.(string))
 	if err != nil {
 		log.Print(err)
@@ -139,18 +157,22 @@ func chgpwd(c *gin.Context) {
 	var message, newPassword string
 	var errorCode int
 	if priv == nil {
-		newPassword, err = password.Change(user.Password, data.Password, data.Password1, data.Password2, false)
+		newPassword, err = password.Change(
+			c.ClientIP()+user.Username, user.Password, data.Password, data.Password1, data.Password2, false,
+		)
 	} else {
-		newPassword, err = password.ChangeRSA(user.Password, data.Password, data.Password1, data.Password2, false, priv)
+		newPassword, err = password.ChangeRSA(
+			c.ClientIP()+user.Username, user.Password, data.Password, data.Password1, data.Password2, false, priv,
+		)
 	}
 	if err != nil {
 		message = err.Error()
-		switch err {
-		case password.ErrIncorrectPassword:
+		switch {
+		case errors.Is(err, password.ErrIncorrectPassword):
 			errorCode = 1
-		case password.ErrConfirmPasswordNotMatch, password.ErrSamePassword:
+		case err == password.ErrConfirmPasswordNotMatch || err == password.ErrSamePassword:
 			errorCode = 2
-		case password.ErrBlankPassword:
+		case err == password.ErrBlankPassword:
 		default:
 			log.Print(err)
 			c.String(500, "Internal Server Error")

@@ -25,7 +25,7 @@
       await fire("Error", "Password cannot be empty.", "error");
     else {
       var pwd: string;
-      if (pubkey) pwd = encrypt(password) as string;
+      if (pubkey.length) pwd = encrypt(password) as string;
       else pwd = password;
       const resp = await post(
         "@universal@/login",
