@@ -99,6 +99,8 @@ func main() {
 			svc.Run(false)
 		case "debug":
 			svc.Run(true)
+		case "test":
+			err = svc.Test()
 		case "install":
 			err = svc.Install()
 		case "remove":
