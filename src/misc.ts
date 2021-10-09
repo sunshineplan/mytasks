@@ -1,5 +1,6 @@
 import JSEncrypt from 'jsencrypt'
 import Swal from 'sweetalert2'
+import { loading } from './stores'
 
 export const encrypt = (pubkey: string, password: string) => {
   const encrypt = new JSEncrypt()
@@ -51,6 +52,7 @@ export const post = async (url: string, data?: object, universal?: boolean) => {
     body: JSON.stringify(data)
   }
   if (universal) init.credentials = 'include'
+  loading.update(n => n + 1)
   try {
     resp = await fetch(url, init)
   } catch (e) {
@@ -60,8 +62,9 @@ export const post = async (url: string, data?: object, universal?: boolean) => {
     } else if (e instanceof Error) {
       message = e.message
     }
-    return Promise.reject(await fire('Error', message, 'error'))
+    resp = new Response(message, { "status": 500 })
   }
+  loading.update(n => n - 1)
   if (resp.status == 401) {
     await fire('Error', 'Login status has changed. Please Re-login!', 'error')
     window.location.href = '/'

@@ -3,7 +3,7 @@
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post, pasteText } from "../misc";
-  import { current, loading, lists, tasks } from "../stores";
+  import { current, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
@@ -28,10 +28,12 @@
   const getTasks = async (force?: boolean) => {
     if (!force) showCompleted = false;
     if (!$tasks.hasOwnProperty($current.list) || force) {
-      $loading++;
       const resp = await post("/get", { list: $current.list });
-      $tasks[$current.list] = await resp.json();
-      $loading--;
+      if (resp.ok) $tasks[$current.list] = await resp.json();
+      else {
+        await fire("Error", await resp.text(), "error");
+        return;
+      }
     }
     refresh();
   };
@@ -41,9 +43,7 @@
   const editList = async (list: string) => {
     list = list.trim();
     if ($current.list != list) {
-      $loading++;
       const resp = await post("/list/edit", { old: $current.list, new: list });
-      $loading--;
       let json: any = {};
       if (resp.ok) {
         json = await resp.json();
@@ -56,7 +56,7 @@
           $current = $lists[index];
           return true;
         }
-      }
+      } else json.message = await resp.text();
       await fire("Error", json.message ? json.message : "Error", "error");
       dispatch("reload");
       return false;
@@ -66,9 +66,7 @@
   const add = async (task: string) => {
     task = task.trim();
     if (task) {
-      $loading++;
       const resp = await post("/task/add", { task, list: $current.list });
-      $loading--;
       let json: any = {};
       if (resp.ok) {
         json = await resp.json();
@@ -84,8 +82,8 @@
           if (selected) selected.remove();
           return;
         }
-      }
-      await fire("Error", "Error", "error");
+        await fire("Error", "Error", "error");
+      } else await fire("Error", await resp.text(), "error");
     } else {
       const selected = document.querySelector(".selected");
       if (selected) selected.remove();
@@ -96,13 +94,11 @@
     const index = currentIncomplete.findIndex((task) => task.id === id);
     if (currentIncomplete[index].task != task) {
       currentIncomplete[index].task = task;
-      $loading++;
       const resp = await post("/task/edit/" + id, {
         task,
         list: $current.list,
       });
-      $loading--;
-      if (!resp.ok) await fire("Error", "Error", "error");
+      if (!resp.ok) await fire("Error", await resp.text(), "error");
     }
   };
 
@@ -163,18 +159,21 @@
       if ($lists.length == 1)
         await fire("Error", "You must have at least one list!", "error");
       else if (await confirm("This list")) {
-        $loading++;
         const resp = await post("/list/delete", { list: $current.list });
-        $loading--;
         if (resp.ok) {
-          const index = $lists.findIndex((list) => list.list === $current.list);
-          $lists.splice(index, 1);
-          delete $tasks[$current.list];
-          $current = $lists[0];
-        } else {
-          await fire("Error", await resp.text(), "error");
-          dispatch("reload");
-        }
+          const json = await resp.json();
+          if (json.status) {
+            const index = $lists.findIndex(
+              (list) => list.list === $current.list
+            );
+            $lists.splice(index, 1);
+            delete $tasks[$current.list];
+            $current = $lists[0];
+          } else {
+            await fire("Error", "Error", "error");
+            dispatch("reload");
+          }
+        } else await fire("Error", await resp.text(), "error");
       }
     } else {
       editable = true;

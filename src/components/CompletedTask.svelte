@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { fire, post, confirm } from "../misc";
-  import { current, loading, lists, tasks } from "../stores";
+  import { current, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
@@ -10,9 +10,7 @@
   let hover = false;
 
   const revert = async () => {
-    $loading++;
     const resp = await post("/completed/revert/" + task.id);
-    $loading--;
     if (resp.ok) {
       const json = await resp.json();
       if (json.status && json.id) {
@@ -34,27 +32,27 @@
         dispatch("refresh");
         return;
       }
-    }
-    await fire("Error", "Error", "error");
-    dispatch("reload");
+      await fire("Error", "Error", "error");
+      dispatch("reload");
+    } else await fire("Error", await resp.text(), "error");
   };
 
   const del = async () => {
     if (await confirm("This completed task")) {
-      $loading++;
       const resp = await post("/completed/delete/" + task.id);
-      const json = await resp.json();
-      $loading--;
-      if (json.status) {
-        const index = $tasks[$current.list].completed.findIndex(
-          (i) => task.id === i.id
-        );
-        $tasks[$current.list].completed.splice(index, 1);
-        dispatch("refresh");
-        return;
-      }
-      await fire("Error", "Error", "error");
-      dispatch("reload");
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.status) {
+          const index = $tasks[$current.list].completed.findIndex(
+            (i) => task.id === i.id
+          );
+          $tasks[$current.list].completed.splice(index, 1);
+          dispatch("refresh");
+          return;
+        }
+        await fire("Error", "Error", "error");
+        dispatch("reload");
+      } else await fire("Error", await resp.text(), "error");
     }
   };
 </script>

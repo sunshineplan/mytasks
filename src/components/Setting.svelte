@@ -32,8 +32,7 @@
         },
         true
       );
-      if (!resp.ok) await fire("Error", await resp.text(), "error");
-      else {
+      if (resp.ok) {
         const json = await resp.json();
         if (json.status == 1) {
           await fire(
@@ -51,7 +50,7 @@
             password2 = "";
           }
         }
-      }
+      } else await fire("Error", await resp.text(), "error");
     } else validated = true;
   };
 

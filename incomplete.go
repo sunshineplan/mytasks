@@ -131,7 +131,7 @@ func deleteIncomplete(c *gin.Context) {
 	} else if checkIncomplete(objectID, userID) {
 		if err := deleteTask(objectID, userID, false); err != nil {
 			log.Println("Failed to delete completed task:", err)
-			c.String(500, "")
+			c.JSON(200, gin.H{"status": 0})
 			return
 		}
 

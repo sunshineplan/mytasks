@@ -31,14 +31,16 @@
       orig: incompleteTasks[event.oldIndex as number].id,
       dest: incompleteTasks[event.newIndex as number].id,
     });
-    if ((await resp.text()) == "1") {
-      const task = incompleteTasks[event.oldIndex as number];
-      incompleteTasks.splice(event.oldIndex as number, 1);
-      incompleteTasks.splice(event.newIndex as number, 0, task);
-    } else {
-      await fire("Error", "Failed to reorder task", "error");
-      dispatch("reload");
-    }
+    if (resp.ok) {
+      if ((await resp.text()) == "1") {
+        const task = incompleteTasks[event.oldIndex as number];
+        incompleteTasks.splice(event.oldIndex as number, 1);
+        incompleteTasks.splice(event.newIndex as number, 0, task);
+      } else {
+        await fire("Error", "Failed to reorder task", "error");
+        dispatch("reload");
+      }
+    } else await fire("Error", await resp.text(), "error");
   };
 </script>
 

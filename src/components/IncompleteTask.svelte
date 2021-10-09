@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { fire, confirm, post, pasteText } from "../misc";
-  import { current, loading, lists, tasks } from "../stores";
+  import { current, lists, tasks } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
@@ -11,9 +11,7 @@
   let hover = false;
 
   const complete = async () => {
-    $loading++;
     const resp = await post("/task/complete/" + task.id);
-    $loading--;
     if (resp.ok) {
       const json = await resp.json();
       if (json.status && json.id) {
@@ -35,28 +33,29 @@
         dispatch("refresh");
         return;
       }
-    }
-    await fire("Error", "Error", "error");
-    dispatch("reload");
+      await fire("Error", "Error", "error");
+      dispatch("reload");
+    } else await fire("Error", await resp.text(), "error");
   };
 
   const del = async () => {
     if (await confirm("This task")) {
-      $loading++;
       const resp = await post("/task/delete/" + task.id);
-      $loading--;
       if (resp.ok) {
-        let index = $tasks[$current.list].incomplete.findIndex(
-          (i) => task.id === i.id
-        );
-        $tasks[$current.list].incomplete.splice(index, 1);
-        index = $lists.findIndex((list) => list.list === $current.list);
-        $lists[index].incomplete--;
-        dispatch("refresh");
-      } else {
-        await fire("Error", await resp.text(), "error");
-        dispatch("reload");
-      }
+        const json = await resp.json();
+        if (json.status) {
+          let index = $tasks[$current.list].incomplete.findIndex(
+            (i) => task.id === i.id
+          );
+          $tasks[$current.list].incomplete.splice(index, 1);
+          index = $lists.findIndex((list) => list.list === $current.list);
+          $lists[index].incomplete--;
+          dispatch("refresh");
+        } else {
+          await fire("Error", "Error", "error");
+          dispatch("reload");
+        }
+      } else await fire("Error", await resp.text(), "error");
     }
   };
 

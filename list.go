@@ -196,13 +196,13 @@ func deleteList(c *gin.Context) {
 	if _, err := collCompleted.DeleteMany(
 		ctx, bson.M{"user": userID, "list": data.List}); err != nil {
 		log.Println("Failed to delete completed tasks list:", err)
-		c.String(500, "")
+		c.JSON(200, gin.H{"status": 0})
 		return
 	}
 
 	if err := <-ec; err != nil {
 		log.Println("Failed to delete incomplete tasks list:", err)
-		c.String(500, "")
+		c.JSON(200, gin.H{"status": 0})
 		return
 	}
 

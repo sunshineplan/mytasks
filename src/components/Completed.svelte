@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import CompletedTask from "./CompletedTask.svelte";
   import { fire, confirm, post } from "../misc";
-  import { current, loading, tasks, lists } from "../stores";
+  import { current, tasks, lists } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
@@ -19,28 +19,30 @@
 
   const empty = async () => {
     if (await confirm("All completed tasks")) {
-      $loading++;
       const resp = await post("/completed/empty", { list: $current.list });
-      const json = await resp.json();
-      $loading--;
-      if (json.status) {
-        $lists[index].completed = 0;
-        $tasks[$current.list].completed = [];
-        dispatch("refresh");
-        show = false;
-      } else await fire("Error", "Error", "error");
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.status) {
+          $lists[index].completed = 0;
+          $tasks[$current.list].completed = [];
+          dispatch("refresh");
+          show = false;
+        } else await fire("Error", "Error", "error");
+      } else await fire("Error", await resp.text(), "error");
     }
   };
 
   const more = async () => {
-    $loading++;
     const resp = await post("/completed/more", {
       list: $current.list,
       start: completedTasks.length,
     });
-    $tasks[$current.list].completed = completedTasks.concat(await resp.json());
-    $loading--;
-    dispatch("refresh");
+    if (resp.ok) {
+      $tasks[$current.list].completed = completedTasks.concat(
+        await resp.json()
+      );
+      dispatch("refresh");
+    } else await fire("Error", await resp.text(), "error");
   };
 </script>
 
