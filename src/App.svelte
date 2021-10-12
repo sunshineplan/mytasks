@@ -186,7 +186,14 @@
 
   :global(.task) {
     padding: 0.75rem 0;
-    width: calc(100% - 176px);
+    width: calc(100% - 178px);
+  }
+
+  :global(.created) {
+    padding: 0.75rem 0;
+    color: #5f6368;
+    width: 82px;
+    text-align: right;
   }
 
   :global(.icon) {

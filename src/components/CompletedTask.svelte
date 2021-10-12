@@ -88,15 +88,6 @@
   }
 
   .task {
-    padding: 0.75rem 0;
-    width: calc(100% - 176px);
     text-decoration: line-through;
-  }
-
-  .created {
-    padding: 0.75rem 0;
-    color: #5f6368;
-    width: 80px;
-    text-align: right;
   }
 </style>

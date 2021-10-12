@@ -148,10 +148,6 @@
   }
 
   .created {
-    padding: 0.75rem 0;
-    color: #5f6368;
-    width: 80px;
-    text-align: right;
     cursor: default;
   }
 
