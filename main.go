@@ -23,10 +23,10 @@ var self string
 var universal bool
 var pemPath, logPath string
 var maxRetry int
-var server httpsvr.Server
 var meta metadata.Server
 var priv *rsa.PrivateKey
 
+var server = httpsvr.New()
 var svc = service.Service{
 	Name:     "MyTasks",
 	Desc:     "Instance to serve My Tasks",
