@@ -92,10 +92,15 @@
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
         selectedTask.textContent = (selectedTask.textContent as string).trim();
-        dispatch("edit", {
-          id: selected,
-          task: selectedTask.textContent,
-        });
+        if (selected)
+          dispatch("edit", {
+            id: selected,
+            task: selectedTask.textContent,
+          });
+        else
+          dispatch("add", {
+            task: selectedTask.textContent,
+          });
       }
       selected = task.id;
     }

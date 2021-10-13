@@ -52,7 +52,14 @@
   id="tasks"
 >
   {#each incompleteTasks as task (task.id)}
-    <IncompleteTask bind:selected bind:task on:refresh on:edit on:reload />
+    <IncompleteTask
+      bind:selected
+      bind:task
+      on:refresh
+      on:add
+      on:edit
+      on:reload
+    />
   {/each}
 </ul>
 

@@ -253,6 +253,7 @@
     bind:showCompleted
     bind:selected
     bind:incompleteTasks={currentIncomplete}
+    on:add={async (e) => await add(e.detail.task)}
     on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
     on:refresh={refresh}
     on:reload={reload}
