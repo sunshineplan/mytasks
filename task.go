@@ -1,109 +1,77 @@
 package main
 
 import (
-	"context"
 	"errors"
-	"log"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/sunshineplan/database/mongodb/api"
 )
 
 type task struct {
-	ID       string             `json:"id"`
-	ObjectID primitive.ObjectID `json:"-" bson:"_id"`
-	Task     string             `json:"task"`
-	List     string             `json:"list"`
-	Created  time.Time          `json:"created"`
-	Seq      int                `json:"-"`
+	ID       string    `json:"id"`
+	ObjectID string    `json:"_id,omitempty"`
+	Task     string    `json:"task"`
+	List     string    `json:"list"`
+	Created  time.Time `json:"created"`
+	Seq      int       `json:"-"`
 }
 
-func checkTask(objecdID primitive.ObjectID, userID interface{}, completed bool) bool {
-	var collection *mongo.Collection
+func checkTask(id string, userID interface{}, completed bool) bool {
+	var client *api.Client
 	if completed {
-		collection = collCompleted
+		client = &completedClient
 	} else {
-		collection = collIncomplete
+		client = &incompleteClient
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := collection.FindOne(ctx, bson.M{"_id": objecdID, "user": userID}).Err(); err != nil {
-		if err != mongo.ErrNoDocuments {
-			log.Print(err)
-		}
-		return false
-	}
-
-	return true
+	n, _ := client.CountDocuments(api.M{"_id": api.ObjectID(id), "user": userID}, nil)
+	return n > 0
 }
 
 func getTask(list, userID string, completed bool) ([]task, error) {
-	var collection *mongo.Collection
-	var opts *options.FindOptions
+	var client *api.Client
+	var opt *api.FindOpt
 	if completed {
-		collection = collCompleted
-		opts = options.Find().SetSort(bson.M{"created": -1}).SetLimit(10)
+		client = &completedClient
+		opt = &api.FindOpt{Sort: api.M{"created": -1}, Limit: 10}
 	} else {
-		collection = collIncomplete
-		opts = options.Find().SetSort(bson.M{"seq": -1})
+		client = &incompleteClient
+		opt = &api.FindOpt{Sort: api.M{"seq": -1}}
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	cursor, err := collection.Find(ctx, bson.M{"list": list, "user": userID}, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	tasks := []task{}
-	if err = cursor.All(ctx, &tasks); err != nil {
+	if err := client.Find(api.M{"list": list, "user": userID}, opt, &tasks); err != nil {
 		return nil, err
 	}
 	for i := range tasks {
-		tasks[i].ID = tasks[i].ObjectID.Hex()
+		tasks[i].ID = tasks[i].ObjectID
+		tasks[i].ObjectID = ""
 	}
 
 	return tasks, nil
 }
 
 func addTask(t task, userID string, completed bool) (string, error) {
-	document := bson.D{
-		{Key: "task", Value: t.Task},
-		{Key: "list", Value: t.List},
-		{Key: "user", Value: userID},
-		{Key: "created", Value: time.Now()},
+	document := api.M{
+		"task":    t.Task,
+		"list":    t.List,
+		"user":    userID,
+		"created": time.Now(),
 	}
 
-	var collection *mongo.Collection
+	var client *api.Client
 	var seq int
 	if completed {
-		collection = collCompleted
+		client = &completedClient
 	} else {
-		collection = collIncomplete
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		cursor, err := collection.Find(
-			ctx, bson.M{"user": userID, "list": t.List}, options.Find().SetSort(bson.M{"seq": -1}).SetLimit(1))
-		if err != nil {
-			return "", err
-		}
-
-		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+		client = &incompleteClient
 
 		var tasks []task
-		if err := cursor.All(ctx, &tasks); err != nil {
+		if err := client.Find(
+			api.M{"user": userID, "list": t.List},
+			&api.FindOpt{Sort: api.M{"seq": -1}, Limit: 1},
+			&tasks,
+		); err != nil {
 			return "", err
 		}
 
@@ -113,71 +81,50 @@ func addTask(t task, userID string, completed bool) (string, error) {
 			seq = tasks[0].Seq + 1
 		}
 
-		document = append(document, bson.E{Key: "seq", Value: seq})
+		document["seq"] = seq
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	res, err := collection.InsertOne(ctx, document)
+	insertID, err := client.InsertOne(document)
 	if err != nil {
 		return "", err
 	}
 
-	insertID, ok := res.InsertedID.(primitive.ObjectID)
-	if !ok {
-		return "", err
-	}
-
-	return insertID.Hex(), nil
+	return insertID, nil
 }
 
-func deleteTask(objectID primitive.ObjectID, userID string, completed bool) error {
-	var collection *mongo.Collection
+func deleteTask(id string, userID string, completed bool) error {
+	var client *api.Client
 	if completed {
-		collection = collCompleted
+		client = &completedClient
 	} else {
-		collection = collIncomplete
+		client = &incompleteClient
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	var task task
-	if err := collection.FindOneAndDelete(ctx, bson.M{"_id": objectID}).Decode(&task); err != nil {
+	if err := client.FindOneAndDelete(api.M{"_id": api.ObjectID(id)}, nil, &task); err != nil {
 		return err
 	}
 
 	if !completed {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if _, err := collection.UpdateMany(ctx,
-			bson.M{"user": userID, "list": task.List, "seq": bson.M{"$gt": task.Seq}},
-			bson.M{"$inc": bson.M{"seq": -1}},
-		); err != nil {
-			return err
-		}
+		_, err := client.UpdateMany(
+			api.M{"user": userID, "list": task.List, "seq": api.M{"$gt": task.Seq}},
+			api.M{"$inc": api.M{"seq": -1}},
+			nil,
+		)
+		return err
 	}
 
 	return nil
 }
 
-func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
+func reorderTask(userID, list string, orig, dest string) error {
 	var origTask, destTask task
 
 	c := make(chan error, 1)
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		c <- collIncomplete.FindOne(ctx, bson.M{"_id": orig}).Decode(&origTask)
+		c <- incompleteClient.FindOne(api.M{"_id": api.ObjectID(orig)}, nil, &origTask)
 	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := collIncomplete.FindOne(ctx, bson.M{"_id": dest}).Decode(&destTask); err != nil {
+	if err := incompleteClient.FindOne(api.M{"_id": api.ObjectID(dest)}, nil, &destTask); err != nil {
 		return err
 	}
 	if err := <-c; err != nil {
@@ -188,27 +135,24 @@ func reorderTask(userID, list string, orig, dest primitive.ObjectID) error {
 		return errors.New("list not match")
 	}
 
-	var filter, update bson.M
+	var filter, update api.M
 	if origTask.Seq > destTask.Seq {
-		filter = bson.M{"user": userID, "list": list, "seq": bson.M{"$gte": destTask.Seq, "$lt": origTask.Seq}}
-		update = bson.M{"$inc": bson.M{"seq": 1}}
+		filter = api.M{"user": userID, "list": list, "seq": api.M{"$gte": destTask.Seq, "$lt": origTask.Seq}}
+		update = api.M{"$inc": api.M{"seq": 1}}
 	} else {
-		filter = bson.M{"user": userID, "list": list, "seq": bson.M{"$gt": origTask.Seq, "$lte": destTask.Seq}}
-		update = bson.M{"$inc": bson.M{"seq": -1}}
+		filter = api.M{"user": userID, "list": list, "seq": api.M{"$gt": origTask.Seq, "$lte": destTask.Seq}}
+		update = api.M{"$inc": api.M{"seq": -1}}
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if _, err := collIncomplete.UpdateMany(ctx, filter, update); err != nil {
+	if _, err := incompleteClient.UpdateMany(filter, update, nil); err != nil {
 		return err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if _, err := collIncomplete.UpdateOne(
-		ctx, bson.M{"_id": orig}, bson.M{"$set": bson.M{"seq": destTask.Seq}}); err != nil {
+	if _, err := incompleteClient.UpdateOne(
+		api.M{"_id": api.ObjectID(orig)},
+		api.M{"$set": api.M{"seq": destTask.Seq}},
+		nil,
+	); err != nil {
 		return err
 	}
 

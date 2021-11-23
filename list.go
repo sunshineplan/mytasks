@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/sunshineplan/database/mongodb/api"
 )
 
 type list struct {
@@ -20,45 +18,22 @@ type list struct {
 func getList(userID string) ([]list, error) {
 	lists := []list{}
 	var incomplete, completed []struct {
-		List  string `bson:"_id"`
+		List  string `json:"_id"`
 		Count int
 	}
 	c := make(chan error, 1)
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		cursor, err := collIncomplete.Aggregate(ctx, []bson.M{
-			{"$match": bson.M{"user": userID}},
-			{"$group": bson.M{"_id": "$list", "count": bson.M{"$sum": 1}}},
-			{"$sort": bson.M{"count": 1}},
-		})
-		if err != nil {
-			log.Println("Failed to query incomplete tasks:", err)
-			return
-		}
-
-		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		c <- cursor.All(ctx, &incomplete)
+		c <- incompleteClient.Aggregate([]api.M{
+			{"$match": api.M{"user": userID}},
+			{"$group": api.M{"_id": "$list", "count": api.M{"$sum": 1}}},
+			{"$sort": api.M{"count": 1}},
+		}, &incomplete)
 	}()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
-	cursor, err := collCompleted.Aggregate(ctx, []bson.M{
-		{"$match": bson.M{"user": userID}},
-		{"$group": bson.M{"_id": "$list", "count": bson.M{"$sum": 1}}},
-	})
-	if err != nil {
-		log.Println("Failed to query completed tasks:", err)
-		return lists, err
-	}
-
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := cursor.All(ctx, &completed); err != nil {
+	if err := completedClient.Aggregate([]api.M{
+		{"$match": api.M{"user": userID}},
+		{"$group": api.M{"_id": "$list", "count": api.M{"$sum": 1}}},
+	}, &completed); err != nil {
 		log.Println("Failed to get completed tasks:", err)
 		return lists, err
 	}
@@ -128,23 +103,17 @@ func editList(c *gin.Context) {
 	default:
 		ec := make(chan error, 1)
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-
-			_, err := collIncomplete.UpdateMany(ctx,
-				bson.M{"user": userID, "list": data.Old},
-				bson.M{"$set": bson.M{"list": data.New}},
+			_, err := incompleteClient.UpdateMany(
+				api.M{"user": userID, "list": data.Old},
+				api.M{"$set": api.M{"list": data.New}},
+				nil,
 			)
-
 			ec <- err
 		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if _, err := collCompleted.UpdateMany(ctx,
-			bson.M{"user": userID, "list": data.Old},
-			bson.M{"$set": bson.M{"list": data.New}},
+		if _, err := completedClient.UpdateMany(
+			api.M{"user": userID, "list": data.Old},
+			api.M{"$set": api.M{"list": data.New}},
+			nil,
 		); err != nil {
 			log.Println("Failed to edit completed tasks list:", err)
 			c.String(500, "")
@@ -181,20 +150,10 @@ func deleteList(c *gin.Context) {
 
 	ec := make(chan error, 1)
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		_, err := collIncomplete.DeleteMany(
-			ctx, bson.M{"user": userID, "list": data.List})
-
+		_, err := incompleteClient.DeleteMany(api.M{"user": userID, "list": data.List})
 		ec <- err
 	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if _, err := collCompleted.DeleteMany(
-		ctx, bson.M{"user": userID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(api.M{"user": userID, "list": data.List}); err != nil {
 		log.Println("Failed to delete completed tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return

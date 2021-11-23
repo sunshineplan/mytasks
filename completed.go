@@ -1,18 +1,14 @@
 package main
 
 import (
-	"context"
 	"log"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/sunshineplan/database/mongodb/api"
 )
 
-func checkCompleted(objecdID primitive.ObjectID, userID interface{}) bool {
-	return checkTask(objecdID, userID, true)
+func checkCompleted(id string, userID interface{}) bool {
+	return checkTask(id, userID, true)
 }
 
 func moreCompleted(c *gin.Context) {
@@ -32,54 +28,34 @@ func moreCompleted(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	cursor, err := collCompleted.Find(ctx,
-		bson.M{"list": data.List, "user": userID},
-		options.Find().SetSort(bson.M{"created": 1}).SetLimit(30).SetSkip(data.Start),
-	)
-	if err != nil {
+	tasks := []task{}
+	if err := completedClient.Find(
+		api.M{"list": data.List, "user": userID},
+		&api.FindOpt{Sort: api.M{"created": 1}, Limit: 30, Skip: data.Start},
+		&tasks,
+	); err != nil {
 		log.Println("Failed to query tasks:", err)
 		c.String(500, "")
 		return
 	}
-
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	tasks := []task{}
-	if err = cursor.All(ctx, &tasks); err != nil {
-		log.Println("Failed to get tasks:", err)
-		c.String(500, "")
-		return
-	}
 	for i := range tasks {
-		tasks[i].ID = tasks[i].ObjectID.Hex()
+		tasks[i].ID = tasks[i].ObjectID
+		tasks[i].ObjectID = ""
 	}
 
 	c.JSON(200, tasks)
 }
 
 func revertCompleted(c *gin.Context) {
-	objectID, err := primitive.ObjectIDFromHex(c.Param("id"))
-	if err != nil {
-		log.Print(err)
-		c.String(500, "")
-		return
-	}
-
+	id := c.Param("id")
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(objectID, userID) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
+	} else if checkCompleted(id, userID) {
 		var task task
-		if err := collCompleted.FindOneAndDelete(ctx, bson.M{"_id": objectID}).Decode(&task); err != nil {
+		if err := completedClient.FindOneAndDelete(api.M{"_id": api.ObjectID(id)}, nil, &task); err != nil {
 			log.Println("Failed to get completed task:", err)
 			c.String(500, "")
 			return
@@ -100,20 +76,14 @@ func revertCompleted(c *gin.Context) {
 }
 
 func deleteCompleted(c *gin.Context) {
-	objectID, err := primitive.ObjectIDFromHex(c.Param("id"))
-	if err != nil {
-		log.Print(err)
-		c.String(500, "")
-		return
-	}
-
+	id := c.Param("id")
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if checkCompleted(objectID, userID) {
-		if err := deleteTask(objectID, userID, true); err != nil {
+	} else if checkCompleted(id, userID) {
+		if err := deleteTask(id, userID, true); err != nil {
 			log.Println("Failed to delete completed task:", err)
 			c.String(500, "")
 			return
@@ -141,11 +111,7 @@ func emptyCompleted(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if _, err := collCompleted.DeleteMany(
-		ctx, bson.M{"user": userID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(api.M{"user": userID, "list": data.List}); err != nil {
 		log.Println("Failed to empty completed tasks:", err)
 		c.String(500, "")
 		return

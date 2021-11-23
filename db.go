@@ -1,42 +1,31 @@
 package main
 
 import (
-	"github.com/sunshineplan/database/mongodb"
+	"github.com/sunshineplan/database/mongodb/api"
 	"github.com/sunshineplan/utils"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var dbConfig mongodb.Config
-var collAccount *mongo.Collection
-var collIncomplete *mongo.Collection
-var collCompleted *mongo.Collection
+var accountClient api.Client
+var incompleteClient api.Client
+var completedClient api.Client
 
 func initDB() error {
+	var mongo api.Client
 	if err := utils.Retry(func() error {
-		return meta.Get("mytasks_mongo", &dbConfig)
+		return meta.Get("mytasks_mongo", &mongo)
 	}, 3, 20); err != nil {
 		return err
 	}
 
-	client, err := dbConfig.Open()
-	if err != nil {
-		return err
-	}
-
-	database := client.Database(dbConfig.Database)
-
-	collAccount = database.Collection("account")
-	collIncomplete = database.Collection("incomplete")
-	collCompleted = database.Collection("completed")
+	accountClient, incompleteClient, completedClient = mongo, mongo, mongo
+	accountClient.Collection = "account"
+	incompleteClient.Collection = "incomplete"
+	completedClient.Collection = "completed"
 
 	return nil
 }
 
 func test() (err error) {
-	if err = meta.Get("mytasks_mongo", &dbConfig); err != nil {
-		return
-	}
-
-	_, err = dbConfig.Open()
-	return
+	var mongo api.Client
+	return meta.Get("mytasks_mongo", &mongo)
 }
