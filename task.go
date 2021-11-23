@@ -13,7 +13,7 @@ type task struct {
 	Task     string    `json:"task"`
 	List     string    `json:"list"`
 	Created  time.Time `json:"created"`
-	Seq      int       `json:"-"`
+	Seq      int       `json:"seq,omitempty"`
 }
 
 func checkTask(id string, userID interface{}, completed bool) bool {
@@ -46,17 +46,18 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 	for i := range tasks {
 		tasks[i].ID = tasks[i].ObjectID
 		tasks[i].ObjectID = ""
+		tasks[i].Seq = 0
 	}
 
 	return tasks, nil
 }
 
 func addTask(t task, userID string, completed bool) (string, error) {
-	document := api.M{
+	doc := api.M{
 		"task":    t.Task,
 		"list":    t.List,
 		"user":    userID,
-		"created": time.Now(),
+		"created": api.Date(time.Now()),
 	}
 
 	var client *api.Client
@@ -81,10 +82,10 @@ func addTask(t task, userID string, completed bool) (string, error) {
 			seq = tasks[0].Seq + 1
 		}
 
-		document["seq"] = seq
+		doc["seq"] = seq
 	}
 
-	insertID, err := client.InsertOne(document)
+	insertID, err := client.InsertOne(doc)
 	if err != nil {
 		return "", err
 	}

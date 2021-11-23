@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"strings"
-	"time"
 
 	"github.com/sunshineplan/database/mongodb/api"
 )
@@ -24,13 +23,11 @@ func addUser(username string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if _, err := incompleteClient.InsertOne(api.M{
-		"task":    "Welcome to use mytasks!",
-		"list":    "My Tasks",
-		"created": time.Now(),
-		"user":    insertedID,
-		"seq":     1,
-	}); err != nil {
+
+	if _, err := addTask(task{
+		Task: "Welcome to use mytasks!",
+		List: "My Tasks",
+	}, insertedID, false); err != nil {
 		log.Fatal(err)
 	}
 	log.Print("Done!")
