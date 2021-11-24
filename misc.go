@@ -15,11 +15,13 @@ func addUser(username string) {
 
 	username = strings.TrimSpace(strings.ToLower(username))
 
-	insertedID, err := accountClient.InsertOne(api.M{
-		"username": username,
-		"password": "123456",
-		"uid":      username,
-	})
+	insertedID, err := accountClient.InsertOne(
+		struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+			Uid      string `json:"uid"`
+		}{username, "123456", username},
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

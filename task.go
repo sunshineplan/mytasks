@@ -53,15 +53,20 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 }
 
 func addTask(t task, userID string, completed bool) (string, error) {
-	doc := api.M{
-		"task":    t.Task,
-		"list":    t.List,
-		"user":    userID,
-		"created": api.Date(time.Now()),
+	doc := struct {
+		Task    string      `json:"task"`
+		List    string      `json:"list"`
+		User    string      `json:"user"`
+		Created interface{} `json:"created"`
+		Seq     int         `json:"seq,omitempty"`
+	}{
+		Task:    t.Task,
+		List:    t.List,
+		User:    userID,
+		Created: api.Date(time.Now()),
 	}
 
 	var client *api.Client
-	var seq int
 	if completed {
 		client = &completedClient
 	} else {
@@ -77,12 +82,10 @@ func addTask(t task, userID string, completed bool) (string, error) {
 		}
 
 		if len(tasks) == 0 {
-			seq = 1
+			doc.Seq = 1
 		} else {
-			seq = tasks[0].Seq + 1
+			doc.Seq = tasks[0].Seq + 1
 		}
-
-		doc["seq"] = seq
 	}
 
 	insertID, err := client.InsertOne(doc)
