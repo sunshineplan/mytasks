@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/sunshineplan/database/mongodb/api"
+	"github.com/sunshineplan/database/mongodb"
 )
 
 func addUser(username string) {
@@ -17,9 +17,9 @@ func addUser(username string) {
 
 	insertedID, err := accountClient.InsertOne(
 		struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Uid      string `json:"uid"`
+			Username string `json:"username" bson:"username"`
+			Password string `json:"password" bson:"password"`
+			Uid      string `json:"uid" bson:"uid"`
 		}{username, "123456", username},
 	)
 	if err != nil {
@@ -29,7 +29,7 @@ func addUser(username string) {
 	if _, err := addTask(task{
 		Task: "Welcome to use mytasks!",
 		List: "My Tasks",
-	}, insertedID, false); err != nil {
+	}, insertedID.(mongodb.ObjectID).Hex(), false); err != nil {
 		log.Fatal(err)
 	}
 	log.Print("Done!")
@@ -43,7 +43,7 @@ func deleteUser(username string) {
 
 	username = strings.TrimSpace(strings.ToLower(username))
 
-	deletedCount, err := accountClient.DeleteOne(api.M{"username": username})
+	deletedCount, err := accountClient.DeleteOne(mongodb.M{"username": username})
 	if err != nil {
 		log.Fatalln("Failed to delete user:", err)
 	} else if deletedCount == 0 {

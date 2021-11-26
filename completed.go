@@ -4,10 +4,10 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sunshineplan/database/mongodb/api"
+	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkCompleted(id string, userID interface{}) bool {
+func checkCompleted(id mongodb.ObjectID, userID interface{}) bool {
 	return checkTask(id, userID, true)
 }
 
@@ -30,8 +30,8 @@ func moreCompleted(c *gin.Context) {
 
 	tasks := []task{}
 	if err := completedClient.Find(
-		api.M{"list": data.List, "user": userID},
-		&api.FindOpt{Sort: api.M{"created": 1}, Limit: 30, Skip: data.Start},
+		mongodb.M{"list": data.List, "user": userID},
+		&mongodb.FindOpt{Sort: mongodb.M{"created": 1}, Limit: 30, Skip: data.Start},
 		&tasks,
 	); err != nil {
 		log.Println("Failed to query tasks:", err)
@@ -47,7 +47,12 @@ func moreCompleted(c *gin.Context) {
 }
 
 func revertCompleted(c *gin.Context) {
-	id := c.Param("id")
+	id, err := completedClient.ObjectID(c.Param("id"))
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
@@ -55,7 +60,7 @@ func revertCompleted(c *gin.Context) {
 		return
 	} else if checkCompleted(id, userID) {
 		var task task
-		if err := completedClient.FindOneAndDelete(api.M{"_id": api.ObjectID(id)}, nil, &task); err != nil {
+		if err := completedClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
 			log.Println("Failed to get completed task:", err)
 			c.String(500, "")
 			return
@@ -68,7 +73,7 @@ func revertCompleted(c *gin.Context) {
 			return
 		}
 
-		c.JSON(200, gin.H{"status": 1, "id": insertID})
+		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
 		return
 	}
 
@@ -76,7 +81,12 @@ func revertCompleted(c *gin.Context) {
 }
 
 func deleteCompleted(c *gin.Context) {
-	id := c.Param("id")
+	id, err := completedClient.ObjectID(c.Param("id"))
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
@@ -111,7 +121,7 @@ func emptyCompleted(c *gin.Context) {
 		return
 	}
 
-	if _, err := completedClient.DeleteMany(api.M{"user": userID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(mongodb.M{"user": userID, "list": data.List}); err != nil {
 		log.Println("Failed to empty completed tasks:", err)
 		c.String(500, "")
 		return

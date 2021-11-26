@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sunshineplan/database/mongodb/api"
+	"github.com/sunshineplan/database/mongodb"
 )
 
 type list struct {
@@ -23,16 +23,16 @@ func getList(userID string) ([]list, error) {
 	}
 	c := make(chan error, 1)
 	go func() {
-		c <- incompleteClient.Aggregate([]api.M{
-			{"$match": api.M{"user": userID}},
-			{"$group": api.M{"_id": "$list", "count": api.M{"$sum": 1}}},
-			{"$sort": api.M{"count": 1}},
+		c <- incompleteClient.Aggregate([]mongodb.M{
+			{"$match": mongodb.M{"user": userID}},
+			{"$group": mongodb.M{"_id": "$list", "count": mongodb.M{"$sum": 1}}},
+			{"$sort": mongodb.M{"count": 1}},
 		}, &incomplete)
 	}()
 
-	if err := completedClient.Aggregate([]api.M{
-		{"$match": api.M{"user": userID}},
-		{"$group": api.M{"_id": "$list", "count": api.M{"$sum": 1}}},
+	if err := completedClient.Aggregate([]mongodb.M{
+		{"$match": mongodb.M{"user": userID}},
+		{"$group": mongodb.M{"_id": "$list", "count": mongodb.M{"$sum": 1}}},
 	}, &completed); err != nil {
 		log.Println("Failed to get completed tasks:", err)
 		return lists, err
@@ -104,15 +104,15 @@ func editList(c *gin.Context) {
 		ec := make(chan error, 1)
 		go func() {
 			_, err := incompleteClient.UpdateMany(
-				api.M{"user": userID, "list": data.Old},
-				api.M{"$set": api.M{"list": data.New}},
+				mongodb.M{"user": userID, "list": data.Old},
+				mongodb.M{"$set": mongodb.M{"list": data.New}},
 				nil,
 			)
 			ec <- err
 		}()
 		if _, err := completedClient.UpdateMany(
-			api.M{"user": userID, "list": data.Old},
-			api.M{"$set": api.M{"list": data.New}},
+			mongodb.M{"user": userID, "list": data.Old},
+			mongodb.M{"$set": mongodb.M{"list": data.New}},
 			nil,
 		); err != nil {
 			log.Println("Failed to edit completed tasks list:", err)
@@ -150,10 +150,10 @@ func deleteList(c *gin.Context) {
 
 	ec := make(chan error, 1)
 	go func() {
-		_, err := incompleteClient.DeleteMany(api.M{"user": userID, "list": data.List})
+		_, err := incompleteClient.DeleteMany(mongodb.M{"user": userID, "list": data.List})
 		ec <- err
 	}()
-	if _, err := completedClient.DeleteMany(api.M{"user": userID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(mongodb.M{"user": userID, "list": data.List}); err != nil {
 		log.Println("Failed to delete completed tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return

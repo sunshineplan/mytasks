@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sunshineplan/database/mongodb/api"
+	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkIncomplete(id string, userID interface{}) bool {
+func checkIncomplete(id mongodb.ObjectID, userID interface{}) bool {
 	return checkTask(id, userID, false)
 }
 
@@ -33,11 +33,16 @@ func addIncomplete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"status": 1, "id": insertID})
+	c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
 }
 
 func editIncomplete(c *gin.Context) {
-	id := c.Param("id")
+	id, err := incompleteClient.ObjectID(c.Param("id"))
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
 
 	var task task
 	if err := c.BindJSON(&task); err != nil {
@@ -53,8 +58,8 @@ func editIncomplete(c *gin.Context) {
 		return
 	} else if checkIncomplete(id, userID) {
 		if _, err := incompleteClient.UpdateOne(
-			api.M{"_id": api.ObjectID(id)},
-			api.M{"$set": api.M{"task": task.Task}},
+			mongodb.M{"_id": id.Interface()},
+			mongodb.M{"$set": mongodb.M{"task": task.Task}},
 			nil,
 		); err != nil {
 			log.Println("Failed to edit incomplete task:", err)
@@ -70,7 +75,12 @@ func editIncomplete(c *gin.Context) {
 }
 
 func completeTask(c *gin.Context) {
-	id := c.Param("id")
+	id, err := incompleteClient.ObjectID(c.Param("id"))
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
@@ -78,7 +88,7 @@ func completeTask(c *gin.Context) {
 		return
 	} else if checkIncomplete(id, userID) {
 		var task task
-		if err := incompleteClient.FindOneAndDelete(api.M{"_id": api.ObjectID(id)}, nil, &task); err != nil {
+		if err := incompleteClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
 			log.Println("Failed to get incomplete task:", err)
 			c.String(500, "")
 			return
@@ -91,7 +101,7 @@ func completeTask(c *gin.Context) {
 			return
 		}
 
-		c.JSON(200, gin.H{"status": 1, "id": insertID})
+		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
 		return
 	}
 
@@ -99,7 +109,12 @@ func completeTask(c *gin.Context) {
 }
 
 func deleteIncomplete(c *gin.Context) {
-	id := c.Param("id")
+	id, err := incompleteClient.ObjectID(c.Param("id"))
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
@@ -125,17 +140,30 @@ func reorder(c *gin.Context) {
 		return
 	}
 
+	origID, err := incompleteClient.ObjectID(data.Orig)
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
+	destID, err := incompleteClient.ObjectID(data.Dest)
+	if err != nil {
+		log.Print(err)
+		c.String(400, "")
+		return
+	}
+
 	userID, _, err := getUser(c)
 	if err != nil {
 		log.Print(err)
 		c.String(500, "")
 		return
-	} else if !checkIncomplete(data.Orig, userID) || !checkIncomplete(data.Dest, userID) {
+	} else if !checkIncomplete(origID, userID) || !checkIncomplete(destID, userID) {
 		c.String(403, "")
 		return
 	}
 
-	if err := reorderTask(userID, data.List, data.Orig, data.Dest); err != nil {
+	if err := reorderTask(userID, data.List, origID, destID); err != nil {
 		log.Println("Failed to reorder tasks:", err)
 		c.String(500, "")
 		return
