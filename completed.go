@@ -7,7 +7,7 @@ import (
 	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkCompleted(id mongodb.ObjectID, userID interface{}) bool {
+func checkCompleted(id mongodb.ObjectID, userID any) bool {
 	return checkTask(id, userID, true)
 }
 

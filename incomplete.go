@@ -8,7 +8,7 @@ import (
 	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkIncomplete(id mongodb.ObjectID, userID interface{}) bool {
+func checkIncomplete(id mongodb.ObjectID, userID any) bool {
 	return checkTask(id, userID, false)
 }
 

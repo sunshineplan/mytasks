@@ -16,7 +16,7 @@ type task struct {
 	Seq      int       `json:"seq,omitempty"`
 }
 
-func checkTask(id mongodb.ObjectID, userID interface{}, completed bool) bool {
+func checkTask(id mongodb.ObjectID, userID any, completed bool) bool {
 	var client mongodb.Client
 	if completed {
 		client = completedClient
@@ -52,13 +52,13 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 	return tasks, nil
 }
 
-func addTask(t task, userID string, completed bool) (interface{}, error) {
+func addTask(t task, userID string, completed bool) (any, error) {
 	doc := struct {
-		Task    string      `json:"task" bson:"task"`
-		List    string      `json:"list" bson:"list"`
-		User    string      `json:"user" bson:"user"`
-		Created interface{} `json:"created" bson:"created"`
-		Seq     int         `json:"seq,omitempty" bson:"seq,omitempty"`
+		Task    string `json:"task" bson:"task"`
+		List    string `json:"list" bson:"list"`
+		User    string `json:"user" bson:"user"`
+		Created any    `json:"created" bson:"created"`
+		Seq     int    `json:"seq,omitempty" bson:"seq,omitempty"`
 	}{
 		Task: t.Task,
 		List: t.List,
