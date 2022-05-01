@@ -3,7 +3,7 @@
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post, pasteText } from "../misc";
-  import { current, lists, tasks } from "../stores";
+  import { current, lists, tasks, loading } from "../stores";
   import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
@@ -190,6 +190,7 @@
   };
 
   const handleWindowClick = async (event: MouseEvent) => {
+    if ($loading) return;
     const target = event.target as Element;
     if (
       target.parentNode &&
