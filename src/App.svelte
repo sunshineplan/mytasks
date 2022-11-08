@@ -54,7 +54,9 @@
   {#if $user}
     <div class="navbar-nav flex-row">
       <span class="nav-link">{$user}</span>
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <span class="nav-link link" on:click={setting}>Setting</span>
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <span class="nav-link link" on:click={logout}>Logout</span>
     </div>
   {:else}

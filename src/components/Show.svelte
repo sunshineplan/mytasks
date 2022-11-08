@@ -242,6 +242,7 @@
       >
         {$current.list}
       </span>
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <span on:click={listClick}>
         {#if !editable}
           <i class="icon edit">edit</i>

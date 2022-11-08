@@ -90,6 +90,7 @@
 
 <svelte:window on:keydown={handleKeydown} on:click={handleClick} />
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <span
   class="toggle"
   on:click={toggle}
@@ -107,6 +108,7 @@
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav" id="lists">
       {#each $lists as list (list.list)}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <li
           class="nav-link list"
           class:active={$current.list === list.list && $component === "show"}

@@ -107,6 +107,7 @@
   };
 </script>
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <li
   class="list-group-item"
   class:selected={task.id === selected}

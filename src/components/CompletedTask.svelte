@@ -62,12 +62,14 @@
   on:mouseenter={() => (hover = true)}
   on:mouseleave={() => (hover = false)}
 >
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
   <i class="icon revert" on:click={revert}>done</i>
   <span class="task">{task.task}</span>
   <span class="created">
     {new Date(task.created.replace("Z", "")).toLocaleDateString()}
   </span>
   {#if hover}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <i class="icon delete" on:click={del}>delete</i>
   {/if}
 </li>

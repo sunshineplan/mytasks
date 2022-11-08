@@ -47,6 +47,7 @@
 </script>
 
 <div style="height: 100%">
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div class="completed" on:click={expand}>
     <span>
       Completed ({$lists[index].completed})
@@ -62,6 +63,7 @@
         <CompletedTask bind:task on:refresh on:reload />
       {/each}
       {#if completedTasks.length < $lists[index].completed}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <li class="list-group-item" on:click={more}>
           <i class="icon">sync</i>
           <span class="load">Load more</span>
