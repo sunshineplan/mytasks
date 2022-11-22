@@ -3,7 +3,6 @@
   import CompletedTask from "./CompletedTask.svelte";
   import { fire, confirm, post } from "../misc";
   import { current, tasks, lists } from "../stores";
-  import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
 

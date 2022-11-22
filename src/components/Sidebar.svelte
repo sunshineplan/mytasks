@@ -1,7 +1,6 @@
 <script lang="ts">
   import { pasteText } from "../misc";
   import { current, component, showSidebar, lists } from "../stores";
-  import type { List } from "../stores";
 
   let hover = false;
 

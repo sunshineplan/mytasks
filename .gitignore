@@ -17,7 +17,5 @@
 *.ini
 *.log
 
-/node_modules/
-/public/build/
-
-.DS_Store
+dist
+node_modules

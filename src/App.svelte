@@ -38,7 +38,7 @@
   };
 
   const logout = async () => {
-    const resp = await post("@universal@/logout", undefined, true);
+    const resp = await post(window.universal + "/logout", undefined, true);
     if (resp.ok) {
       await getInfo();
       window.history.pushState({}, "", "/");

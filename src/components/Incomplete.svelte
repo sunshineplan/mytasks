@@ -4,7 +4,6 @@
   import IncompleteTask from "./IncompleteTask.svelte";
   import { fire, post } from "../misc";
   import { current } from "../stores";
-  import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
 

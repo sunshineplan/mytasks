@@ -4,7 +4,6 @@
   import Completed from "./Completed.svelte";
   import { fire, confirm, post, pasteText } from "../misc";
   import { current, lists, tasks, loading } from "../stores";
-  import type { Task } from "../stores";
 
   const dispatch = createEventDispatcher();
 
