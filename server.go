@@ -90,7 +90,7 @@ func run() {
 	}
 
 	router.StaticFS("/assets", http.Dir(joinPath(dir(self), "dist/assets")))
-	router.StaticFile("const.js", joinPath(dir(self), "dist/const.js"))
+	router.StaticFile("env.js", joinPath(dir(self), "dist/env.js"))
 	router.StaticFile("favicon.png", joinPath(dir(self), "dist/favicon.png"))
 	router.LoadHTMLFiles(joinPath(dir(self), "dist/index.html"))
 	router.GET("/", func(c *gin.Context) {
