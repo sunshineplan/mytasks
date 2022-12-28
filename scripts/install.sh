@@ -31,7 +31,6 @@ configMyTasks() {
     read -p 'Please enter log path(default: /var/log/app/mytasks.log): ' log
     [ -z $log ] && log=/var/log/app/mytasks.log
     read -p 'Please enter update URL: ' update
-    read -p 'Please enter exclude files: ' exclude
     mkdir -p $(dirname $log)
     sed "s,\$server,$server," /var/www/mytasks/config.ini.default > /var/www/mytasks/config.ini
     sed -i "s/\$header/$header/" /var/www/mytasks/config.ini
@@ -42,7 +41,6 @@ configMyTasks() {
     sed -i "s/\$host/$host/" /var/www/mytasks/config.ini
     sed -i "s/\$port/$port/" /var/www/mytasks/config.ini
     sed -i "s,\$update,$update," /var/www/mytasks/config.ini
-    sed -i "s|\$exclude|$exclude|" /var/www/mytasks/config.ini
     ./mytasks install || exit 1
     service mytasks start
 }
