@@ -16,8 +16,8 @@ import (
 )
 
 func run() {
-	if logPath != "" {
-		f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	if *logPath != "" {
+		f, err := os.OpenFile(*logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 		if err != nil {
 			log.Fatalln("Failed to open log file:", err)
 		}
@@ -39,7 +39,7 @@ func run() {
 		log.Fatal(err)
 	}
 
-	if universal {
+	if *universal {
 		var redisStore struct{ Endpoint, Password, Secret, API string }
 		if err := meta.Get("account_redis", &redisStore); err != nil {
 			log.Fatal(err)
@@ -97,7 +97,7 @@ func run() {
 		c.HTML(200, "index.html", nil)
 	})
 
-	if !universal {
+	if !*universal {
 		auth := router.Group("/")
 		auth.POST("/login", login)
 		auth.POST("/logout", authRequired, func(c *gin.Context) {

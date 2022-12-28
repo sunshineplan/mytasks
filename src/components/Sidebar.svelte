@@ -12,6 +12,8 @@
     if (window.innerWidth <= 900) $showSidebar = false;
     $current = list;
     $component = "show";
+    const ul = document.querySelector("#tasks");
+    if (ul) ul.scrollTop = 0;
   };
 
   const add = async (list: string) => {
