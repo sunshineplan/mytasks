@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,28 +18,35 @@ import (
 	"github.com/sunshineplan/utils/httpsvr"
 )
 
-var self string
-var meta metadata.Server
-var priv *rsa.PrivateKey
+var (
+	self string
+	priv *rsa.PrivateKey
 
-var server = httpsvr.New()
-var svc = service.Service{
-	Name:     "MyTasks",
-	Desc:     "Instance to serve My Tasks",
-	Exec:     run,
-	TestExec: test,
-	Options: service.Options{
+	server = httpsvr.New()
+	svc    = service.New()
+	meta   metadata.Server
+
+	joinPath = filepath.Join
+	dir      = filepath.Dir
+)
+
+func init() {
+	var err error
+	self, err = os.Executable()
+	if err != nil {
+		svc.Fatalln("Failed to get self path:", err)
+	}
+	svc.Name = "MyTasks"
+	svc.Desc = "Instance to serve My Tasks"
+	svc.Exec = run
+	svc.TestExec = test
+	svc.Options = service.Options{
 		Dependencies:       []string{"Wants=network-online.target", "After=network.target"},
 		Environment:        map[string]string{"GIN_MODE": "release"},
 		RemoveBeforeUpdate: []string{"dist/assets"},
 		ExcludeFiles:       []string{"scripts/mytasks.conf"},
-	},
+	}
 }
-
-var (
-	joinPath = filepath.Join
-	dir      = filepath.Dir
-)
 
 var (
 	maxRetry  = flag.Int("retry", 5, "Max number of retries on wrong password")
@@ -54,7 +60,7 @@ func main() {
 	var err error
 	self, err = os.Executable()
 	if err != nil {
-		log.Fatalln("Failed to get self path:", err)
+		svc.Fatalln("Failed to get self path:", err)
 	}
 
 	flag.StringVar(&meta.Addr, "server", "", "Metadata Server Address")
@@ -64,6 +70,7 @@ func main() {
 	flag.StringVar(&server.Host, "host", "0.0.0.0", "Server Host")
 	flag.StringVar(&server.Port, "port", "12345", "Server Port")
 	flag.StringVar(&svc.Options.UpdateURL, "update", "", "Update URL")
+	flag.StringVar(&svc.Options.PIDFile, "pid", "/var/run/mytasks.pid", "PID file path")
 	flags.SetConfigFile(joinPath(dir(self), "config.ini"))
 	flags.Parse()
 
@@ -71,34 +78,34 @@ func main() {
 	if *pemPath != "" {
 		b, err := os.ReadFile(*pemPath)
 		if err != nil {
-			log.Fatal(err)
+			svc.Fatal(err)
 		}
 		block, _ := pem.Decode(b)
 		if block == nil {
-			log.Fatal("no PEM data is found")
+			svc.Fatal("no PEM data is found")
 		}
 		priv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			log.Fatal(err)
+			svc.Fatal(err)
 		}
 	}
 
 	if service.IsWindowsService() {
-		svc.Run(false)
+		svc.Run()
 		return
 	}
 
 	switch flag.NArg() {
 	case 0:
-		run()
+		err = svc.Run()
 	case 1:
 		cmd := flag.Arg(0)
 		var ok bool
 		if ok, err = svc.Command(cmd); !ok {
 			if cmd == "add" || cmd == "delete" {
-				log.Fatalf("%s need two arguments", cmd)
+				svc.Fatalf("%s need two arguments", cmd)
 			} else {
-				log.Fatalln("Unknown argument:", cmd)
+				svc.Fatalln("Unknown argument:", cmd)
 			}
 		}
 	case 2:
@@ -110,12 +117,16 @@ func main() {
 				deleteUser(flag.Arg(1))
 			}
 		default:
-			log.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
+			svc.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
 		}
 	default:
-		log.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
+		svc.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
 	}
 	if err != nil {
-		log.Fatalf("Failed to %s: %v", flag.Arg(0), err)
+		action := flag.Arg(0)
+		if action == "" {
+			action = "run"
+		}
+		svc.Printf("Failed to %s: %v", action, err)
 	}
 }

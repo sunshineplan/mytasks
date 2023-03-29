@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +16,7 @@ func info(c *gin.Context) {
 
 	lists, err := getList(id)
 	if err != nil {
-		log.Println("Failed to get list:", err)
+		svc.Println("Failed to get list:", err)
 		c.String(500, "")
 		return
 	}
@@ -36,7 +34,7 @@ func get(c *gin.Context) {
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	}
@@ -51,13 +49,13 @@ func get(c *gin.Context) {
 
 	completed, err := getTask(data.List, userID, true)
 	if err != nil {
-		log.Println("Failed to get completed tasks:", err)
+		svc.Println("Failed to get completed tasks:", err)
 		c.String(500, "")
 		return
 	}
 
 	if err := <-ec; err != nil {
-		log.Println("Failed to get incomplete tasks:", err)
+		svc.Println("Failed to get incomplete tasks:", err)
 		c.String(500, "")
 		return
 	}

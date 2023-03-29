@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -34,12 +33,12 @@ func getList(userID string) ([]list, error) {
 		{"$match": mongodb.M{"user": userID}},
 		{"$group": mongodb.M{"_id": "$list", "count": mongodb.M{"$sum": 1}}},
 	}, &completed); err != nil {
-		log.Println("Failed to get completed tasks:", err)
+		svc.Println("Failed to get completed tasks:", err)
 		return lists, err
 	}
 
 	if err := <-c; err != nil {
-		log.Println("Failed to incomplete tasks:", err)
+		svc.Println("Failed to incomplete tasks:", err)
 		return lists, err
 	}
 
@@ -63,7 +62,7 @@ Loop:
 func editList(c *gin.Context) {
 	var data struct{ Old, New string }
 	if err := c.BindJSON(&data); err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
@@ -71,14 +70,14 @@ func editList(c *gin.Context) {
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	}
 
 	lists, err := getList(userID)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	}
@@ -115,13 +114,13 @@ func editList(c *gin.Context) {
 			mongodb.M{"$set": mongodb.M{"list": data.New}},
 			nil,
 		); err != nil {
-			log.Println("Failed to edit completed tasks list:", err)
+			svc.Println("Failed to edit completed tasks list:", err)
 			c.String(500, "")
 			return
 		}
 
 		if err := <-ec; err != nil {
-			log.Println("Failed to edit incomplete tasks list:", err)
+			svc.Println("Failed to edit incomplete tasks list:", err)
 			c.String(500, "")
 			return
 		}
@@ -136,14 +135,14 @@ func editList(c *gin.Context) {
 func deleteList(c *gin.Context) {
 	var data struct{ List string }
 	if err := c.BindJSON(&data); err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	}
@@ -154,13 +153,13 @@ func deleteList(c *gin.Context) {
 		ec <- err
 	}()
 	if _, err := completedClient.DeleteMany(mongodb.M{"user": userID, "list": data.List}); err != nil {
-		log.Println("Failed to delete completed tasks list:", err)
+		svc.Println("Failed to delete completed tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return
 	}
 
 	if err := <-ec; err != nil {
-		log.Println("Failed to delete incomplete tasks list:", err)
+		svc.Println("Failed to delete incomplete tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return
 	}

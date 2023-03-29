@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 	"net/http"
 	"os"
 
@@ -13,21 +12,16 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/sunshineplan/utils/log"
 )
 
-func run() {
-	if *logPath != "" {
-		f, err := os.OpenFile(*logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-		if err != nil {
-			log.Fatalln("Failed to open log file:", err)
-		}
-		gin.DefaultWriter = f
-		gin.DefaultErrorWriter = f
-		log.SetOutput(f)
-	}
+func run() error {
+	svc.Logger = log.New(*logPath, "", log.LstdFlags)
+	gin.DefaultWriter = svc.Logger
+	gin.DefaultErrorWriter = svc.Logger
 
 	if err := initDB(); err != nil {
-		log.Fatalln("Failed to initialize database:", err)
+		return err
 	}
 
 	router := gin.Default()
@@ -36,23 +30,23 @@ func run() {
 
 	js, err := os.ReadFile(joinPath(dir(self), "dist/const.js"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if *universal {
 		var redisStore struct{ Endpoint, Password, Secret, API string }
 		if err := meta.Get("account_redis", &redisStore); err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		js = bytes.ReplaceAll(js, []byte("@universal@"), []byte(redisStore.API))
 
 		store, err := redis.NewStore(10, "tcp", redisStore.Endpoint, redisStore.Password, []byte(redisStore.Secret))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		if err := redis.SetKeyPrefix(store, "account_"); err != nil {
-			log.Fatal(err)
+			return err
 		}
 		router.Use(sessions.Sessions("universal", store))
 	} else {
@@ -60,7 +54,7 @@ func run() {
 
 		secret := make([]byte, 16)
 		if _, err := rand.Read(secret); err != nil {
-			log.Fatalln("Failed to get secret:", err)
+			return err
 		}
 		router.Use(sessions.Sessions("session", cookie.NewStore(secret)))
 	}
@@ -68,7 +62,7 @@ func run() {
 	if priv != nil {
 		pubkey_bytes, err := x509.MarshalPKIXPublicKey(&priv.PublicKey)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		js = bytes.ReplaceAll(
 			js, []byte("@pubkey@"),
@@ -86,7 +80,7 @@ func run() {
 	}
 
 	if err := os.WriteFile(joinPath(dir(self), "dist/env.js"), js, 0644); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	router.StaticFS("/assets", http.Dir(joinPath(dir(self), "dist/assets")))
@@ -105,7 +99,7 @@ func run() {
 			session.Clear()
 			session.Options(sessions.Options{MaxAge: -1})
 			if err := session.Save(); err != nil {
-				log.Print(err)
+				svc.Print(err)
 				c.String(500, "")
 				return
 			}
@@ -135,7 +129,5 @@ func run() {
 		c.Redirect(302, "/")
 	})
 
-	if err := server.Run(); err != nil {
-		log.Fatal(err)
-	}
+	return server.Run()
 }

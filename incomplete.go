@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,14 +20,14 @@ func addIncomplete(c *gin.Context) {
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	}
 
 	insertID, err := addTask(task, userID, false)
 	if err != nil {
-		log.Println("Failed to add incomplete task:", err)
+		svc.Println("Failed to add incomplete task:", err)
 		c.String(500, "")
 		return
 	}
@@ -39,7 +38,7 @@ func addIncomplete(c *gin.Context) {
 func editIncomplete(c *gin.Context) {
 	id, err := incompleteClient.ObjectID(c.Param("id"))
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
@@ -53,7 +52,7 @@ func editIncomplete(c *gin.Context) {
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	} else if checkIncomplete(id, userID) {
@@ -62,7 +61,7 @@ func editIncomplete(c *gin.Context) {
 			mongodb.M{"$set": mongodb.M{"task": task.Task}},
 			nil,
 		); err != nil {
-			log.Println("Failed to edit incomplete task:", err)
+			svc.Println("Failed to edit incomplete task:", err)
 			c.String(500, "")
 			return
 		}
@@ -77,26 +76,26 @@ func editIncomplete(c *gin.Context) {
 func completeTask(c *gin.Context) {
 	id, err := incompleteClient.ObjectID(c.Param("id"))
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	} else if checkIncomplete(id, userID) {
 		var task task
 		if err := incompleteClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
-			log.Println("Failed to get incomplete task:", err)
+			svc.Println("Failed to get incomplete task:", err)
 			c.String(500, "")
 			return
 		}
 
 		insertID, err := addTask(task, userID, true)
 		if err != nil {
-			log.Println("Failed to add completed task:", err)
+			svc.Println("Failed to add completed task:", err)
 			c.String(500, "")
 			return
 		}
@@ -111,18 +110,18 @@ func completeTask(c *gin.Context) {
 func deleteIncomplete(c *gin.Context) {
 	id, err := incompleteClient.ObjectID(c.Param("id"))
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	} else if checkIncomplete(id, userID) {
 		if err := deleteTask(id, userID, false); err != nil {
-			log.Println("Failed to delete completed task:", err)
+			svc.Println("Failed to delete completed task:", err)
 			c.JSON(200, gin.H{"status": 0})
 			return
 		}
@@ -142,20 +141,20 @@ func reorder(c *gin.Context) {
 
 	origID, err := incompleteClient.ObjectID(data.Orig)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
 	destID, err := incompleteClient.ObjectID(data.Dest)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(400, "")
 		return
 	}
 
 	userID, _, err := getUser(c)
 	if err != nil {
-		log.Print(err)
+		svc.Print(err)
 		c.String(500, "")
 		return
 	} else if !checkIncomplete(origID, userID) || !checkIncomplete(destID, userID) {
@@ -164,7 +163,7 @@ func reorder(c *gin.Context) {
 	}
 
 	if err := reorderTask(userID, data.List, origID, destID); err != nil {
-		log.Println("Failed to reorder tasks:", err)
+		svc.Println("Failed to reorder tasks:", err)
 		c.String(500, "")
 		return
 	}
