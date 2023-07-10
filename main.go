@@ -5,10 +5,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/sunshineplan/metadata"
 	"github.com/sunshineplan/password"
@@ -46,6 +44,15 @@ func init() {
 		RemoveBeforeUpdate: []string{"dist/assets"},
 		ExcludeFiles:       []string{"scripts/mytasks.conf"},
 	}
+	svc.RegisterCommand("add", "add user", func(arg ...string) error {
+		return addUser(arg[0])
+	}, 1)
+	svc.RegisterCommand("delete", "delete user", func(arg ...string) error {
+		if utils.Confirm("Do you want to delete this user?", 3) {
+			return deleteUser(arg[0])
+		}
+		return nil
+	}, 1)
 }
 
 var (
@@ -90,43 +97,7 @@ func main() {
 		}
 	}
 
-	if service.IsWindowsService() {
-		svc.Run()
-		return
-	}
-
-	switch flag.NArg() {
-	case 0:
-		err = svc.Run()
-	case 1:
-		cmd := flag.Arg(0)
-		var ok bool
-		if ok, err = svc.Command(cmd); !ok {
-			if cmd == "add" || cmd == "delete" {
-				svc.Fatalf("%s need two arguments", cmd)
-			} else {
-				svc.Fatalln("Unknown argument:", cmd)
-			}
-		}
-	case 2:
-		switch flag.Arg(0) {
-		case "add":
-			addUser(flag.Arg(1))
-		case "delete":
-			if utils.Confirm(fmt.Sprintf("Do you want to delete user %s?", flag.Arg(1)), 3) {
-				deleteUser(flag.Arg(1))
-			}
-		default:
-			svc.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
-		}
-	default:
-		svc.Fatalln("Unknown arguments:", strings.Join(flag.Args(), " "))
-	}
-	if err != nil {
-		action := flag.Arg(0)
-		if action == "" {
-			action = "run"
-		}
-		svc.Printf("Failed to %s: %v", action, err)
+	if err := svc.ParseAndRun(flag.Args()); err != nil {
+		svc.Fatal(err)
 	}
 }
