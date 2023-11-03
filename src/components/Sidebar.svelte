@@ -92,6 +92,7 @@
 <svelte:window on:keydown={handleKeydown} on:click={handleClick} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <span
   class="toggle"
   on:click={toggle}
@@ -110,6 +111,7 @@
     <ul class="navbar-nav" id="lists">
       {#each $lists as list (list.list)}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
         <li
           class="nav-link list"
           class:active={$current.list === list.list && $component === "show"}
@@ -182,12 +184,6 @@
   }
 
   .nav-link.active {
-    background-color: #eaf5fd;
-  }
-
-  :global(.new) {
-    outline: 0;
-    border-left: 5px solid transparent;
     background-color: #eaf5fd;
   }
 

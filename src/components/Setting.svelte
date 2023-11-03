@@ -72,6 +72,7 @@
 
 <svelte:window on:keydown={handleEscape} />
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div on:keyup={handleEnter}>
   <header style="padding-left: 20px">
     <h3>Setting</h3>

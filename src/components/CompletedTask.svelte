@@ -62,6 +62,7 @@
   on:mouseleave={() => (hover = false)}
 >
   <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <i class="icon revert" on:click={revert}>done</i>
   <span class="task">{task.task}</span>
   <span class="created">
@@ -69,6 +70,7 @@
   </span>
   {#if hover}
     <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <i class="icon delete" on:click={del}>delete</i>
   {/if}
 </li>

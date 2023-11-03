@@ -107,6 +107,7 @@
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 <li
   class="list-group-item"
   class:selected={task.id === selected}
@@ -114,7 +115,9 @@
   on:mouseleave={() => (hover = false)}
   on:click={handleClick}
 >
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <i class="icon complete" on:click={complete} />
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <span
     class="task"
     contenteditable={task.id === selected}
@@ -127,6 +130,7 @@
     {new Date(task.created.replace("Z", "")).toLocaleDateString()}
   </span>
   {#if task.id === selected}
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <i class="icon delete" on:click={del}>delete</i>
   {:else if hover}
     <i class="icon">edit</i>
@@ -154,16 +158,5 @@
 
   .created {
     cursor: default;
-  }
-
-  :global(.selected) {
-    cursor: text;
-    border-bottom-width: 1px;
-    border-color: #1a73e8;
-    background-color: #eaf5fd;
-  }
-
-  :global(.selected:hover) {
-    box-shadow: none;
   }
 </style>

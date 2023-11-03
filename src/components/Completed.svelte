@@ -47,6 +47,7 @@
 
 <div style="height: 100%">
   <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="completed" on:click={expand}>
     <span>
       Completed ({$lists[index].completed})
@@ -63,6 +64,7 @@
       {/each}
       {#if completedTasks.length < $lists[index].completed}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
         <li class="list-group-item" on:click={more}>
           <i class="icon">sync</i>
           <span class="load">Load more</span>

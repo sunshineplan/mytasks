@@ -55,6 +55,7 @@
   <title>Log In - My Tasks</title>
 </svelte:head>
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="content" on:keyup={handleEnter}>
   <header>
     <h3

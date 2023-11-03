@@ -55,8 +55,10 @@
     <div class="navbar-nav flex-row">
       <span class="nav-link">{$user}</span>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span class="nav-link link" on:click={setting}>Setting</span>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span class="nav-link link" on:click={logout}>Logout</span>
     </div>
   {:else}
@@ -70,6 +72,7 @@
     {/if}
   {:else}
     <Sidebar on:reload={getInfo} />
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
       class="content"
       style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
@@ -140,87 +143,6 @@
     display: flex;
   }
 
-  :global(:root) {
-    --sk-color: #1a73e8;
-  }
-
-  :global(header) {
-    height: 100px;
-  }
-
-  :global(.content) {
-    position: fixed;
-    top: 0;
-    padding-top: 90px;
-    height: 100%;
-    width: 100%;
-  }
-
-  :global(li > span) {
-    outline: 0;
-    display: inline-block;
-    min-width: 10px;
-    word-break: break-word;
-  }
-
-  :global(.list-group-item) {
-    padding: 0;
-  }
-
-  :global(.list-group-flush > .list-group-item:first-child) {
-    border-top-width: 1px;
-  }
-
-  :global(.list-group-flush > .list-group-item:first-child.selected) {
-    border-top: 1px solid transparent;
-  }
-
-  :global(.list-group-flush > .list-group-item:last-child) {
-    border-bottom-width: 1px;
-  }
-
-  :global(.list-group-item:hover) {
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
-      0 1px 3px 1px rgba(60, 64, 67, 0.149);
-    outline: 0;
-    z-index: 2000;
-  }
-
-  :global(.task) {
-    padding: 0.75rem 0;
-    width: calc(100% - 178px);
-  }
-
-  :global(.created) {
-    padding: 0.75rem 0;
-    color: #5f6368;
-    width: 82px;
-    text-align: right;
-  }
-
-  :global(.icon) {
-    font-family: "Material Icons";
-    font-style: normal;
-    font-size: 1.5rem;
-    padding: 12px;
-    line-height: normal;
-    color: #5f6368;
-    cursor: pointer;
-    height: fit-content;
-  }
-
-  :global(.delete:hover) {
-    color: #d93025;
-  }
-
-  :global(.swal) {
-    margin: 8px 6px;
-  }
-
-  :global(.sortable-ghost) {
-    opacity: 0;
-  }
-
   @media (max-width: 900px) {
     .brand.user {
       padding-left: 90px;
@@ -229,10 +151,6 @@
     .loading {
       left: 0;
       width: 100%;
-    }
-
-    :global(.content) {
-      padding-left: 0 !important;
     }
   }
 </style>

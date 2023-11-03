@@ -231,6 +231,7 @@
 <div style="height: 100%">
   <header style="padding-left: 20px">
     <div style="height: 50px">
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span
         class="h3"
         id="list"
@@ -242,6 +243,7 @@
         {$current.list}
       </span>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span on:click={listClick}>
         {#if !editable}
           <i class="icon edit">edit</i>
