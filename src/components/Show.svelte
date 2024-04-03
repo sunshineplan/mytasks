@@ -12,6 +12,7 @@
   let selected: string;
   let editable = false;
   let showCompleted = false;
+  let composition = false;
 
   const refresh = () => {
     $lists = $lists;
@@ -104,11 +105,11 @@
   const addTask = async () => {
     const task = document.querySelector(".selected>.task");
     if (!selected && task) {
-      task.textContent = (task.textContent as string).trim();
+      task.textContent = task.textContent!.trim();
       await add(task.textContent);
     }
     selected = "";
-    const ul = document.querySelector("#tasks") as Element;
+    const ul = document.querySelector("#tasks")!;
     const li = document.createElement("li");
     li.classList.add("list-group-item", "selected");
     const span = document.createElement("span");
@@ -116,11 +117,19 @@
     span.style.paddingLeft = "48px";
     li.appendChild(span);
     li.addEventListener("paste", pasteText);
+    let composition = false;
+    li.addEventListener("compositionstart", () => {
+      composition = true;
+    });
+    li.addEventListener("compositionend", () => {
+      composition = false;
+    });
     li.addEventListener("keydown", async (event) => {
+      if (composition) return;
       if (event.key == "Enter" || event.key == "Escape") {
         event.preventDefault();
         const target = event.target as Element;
-        target.textContent = (target.textContent as string).trim();
+        target.textContent = target.textContent!.trim();
         await add(target.textContent);
       }
     });
@@ -130,14 +139,15 @@
     const range = document.createRange();
     range.selectNodeContents(span);
     range.collapse(false);
-    const sel = window.getSelection() as Selection;
+    const sel = window.getSelection()!;
     sel.removeAllRanges();
     sel.addRange(range);
   };
 
   const listKeydown = async (event: KeyboardEvent) => {
+    if (composition) return;
     const target = event.target as Element;
-    target.textContent = (target.textContent as string).trim();
+    target.textContent = target.textContent!.trim();
     if (event.key == "Enter") {
       event.preventDefault();
       if (target.textContent) editable = !(await editList(target.textContent));
@@ -163,7 +173,7 @@
           const json = await resp.json();
           if (json.status) {
             const index = $lists.findIndex(
-              (list) => list.list === $current.list
+              (list) => list.list === $current.list,
             );
             $lists.splice(index, 1);
             delete $tasks[$current.list];
@@ -176,13 +186,13 @@
       }
     } else {
       editable = true;
-      const target = document.querySelector("#list") as HTMLElement;
+      const target = document.querySelector<HTMLElement>("#list")!;
       target.setAttribute("contenteditable", "true");
       target.focus();
       const range = document.createRange();
       range.selectNodeContents(target);
       range.collapse(false);
-      const sel = window.getSelection() as Selection;
+      const sel = window.getSelection()!;
       sel.removeAllRanges();
       sel.addRange(range);
     }
@@ -199,7 +209,7 @@
       const id = selected;
       const task = document.querySelector(".selected>.task");
       if (task) {
-        task.textContent = (task.textContent as string).trim();
+        task.textContent = task.textContent!.trim();
         if (id) await edit(id, task.textContent);
         else await add(task.textContent);
       }
@@ -211,8 +221,8 @@
       !target.classList.contains("swal2-confirm") &&
       editable
     ) {
-      const list = document.querySelector("#list") as Element;
-      list.textContent = (list.textContent as string).trim();
+      const list = document.querySelector("#list")!;
+      list.textContent = list.textContent!.trim();
       if (list.textContent) editable = !(await editList(list.textContent));
       else {
         target.textContent = $current.list;
@@ -237,6 +247,12 @@
         id="list"
         class:editable
         contenteditable={editable}
+        on:compositionstart={() => {
+          composition = true;
+        }}
+        on:compositionend={() => {
+          composition = false;
+        }}
         on:keydown={listKeydown}
         on:paste={pasteText}
       >

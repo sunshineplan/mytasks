@@ -8,6 +8,7 @@
   export let selected = "";
   export let task: Task;
   let hover = false;
+  let composition = false;
 
   const complete = async () => {
     const resp = await post("/task/complete/" + task.id);
@@ -18,7 +19,7 @@
         $lists[index].incomplete--;
         $lists[index].completed++;
         index = $tasks[$current.list].incomplete.findIndex(
-          (i) => task.id === i.id
+          (i) => task.id === i.id,
         );
         $tasks[$current.list].completed = [
           {
@@ -44,7 +45,7 @@
         const json = await resp.json();
         if (json.status) {
           let index = $tasks[$current.list].incomplete.findIndex(
-            (i) => task.id === i.id
+            (i) => task.id === i.id,
           );
           $tasks[$current.list].incomplete.splice(index, 1);
           index = $lists.findIndex((list) => list.list === $current.list);
@@ -59,10 +60,11 @@
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
+    if (composition) return;
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
       const target = event.target as Element;
-      target.textContent = (target.textContent as string).trim();
+      target.textContent = target.textContent!.trim();
       dispatch("edit", {
         id: task.id,
         task: target.textContent,
@@ -77,20 +79,18 @@
       !target.classList.contains("complete") &&
       !target.classList.contains("delete")
     ) {
-      target = (target.parentNode as Element).querySelector(
-        ".task"
-      ) as HTMLElement;
+      target = target.parentNode!.querySelector(".task")!;
       target.setAttribute("contenteditable", "true");
       target.focus();
       const range = document.createRange();
       range.selectNodeContents(target);
       range.collapse(false);
-      const sel = window.getSelection() as Selection;
+      const sel = window.getSelection()!;
       sel.removeAllRanges();
       sel.addRange(range);
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
-        selectedTask.textContent = (selectedTask.textContent as string).trim();
+        selectedTask.textContent = selectedTask.textContent!.trim();
         if (selected)
           dispatch("edit", {
             id: selected,
@@ -121,6 +121,12 @@
   <span
     class="task"
     contenteditable={task.id === selected}
+    on:compositionstart={() => {
+      composition = true;
+    }}
+    on:compositionend={() => {
+      composition = false;
+    }}
     on:keydown={handleKeydown}
     on:paste={pasteText}
   >

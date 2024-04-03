@@ -18,7 +18,7 @@
 
   const add = async (list: string) => {
     list = list.trim();
-    (document.querySelector(".new") as Element).remove();
+    document.querySelector(".new")!.remove();
     const newList: List = {
       list,
       incomplete: 0,
@@ -30,16 +30,24 @@
 
   const addList = async () => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    const newList = document.querySelector(".new");
-    if (newList) await add((newList as HTMLElement).innerText);
-    const ul = document.querySelector("ul.navbar-nav") as Element;
+    const newList = document.querySelector<HTMLElement>(".new");
+    if (newList) await add(newList.innerText);
+    const ul = document.querySelector("ul.navbar-nav")!;
     const li = document.createElement("li");
     li.classList.add("nav-link", "new");
     ul.appendChild(li);
     li.addEventListener("paste", pasteText);
+    let composition = false;
+    li.addEventListener("compositionstart", () => {
+      composition = true;
+    });
+    li.addEventListener("compositionend", () => {
+      composition = false;
+    });
     li.addEventListener("keydown", async (event) => {
+      if (composition) return;
       const target = event.target as Element;
-      const list = (target.textContent as string).trim();
+      const list = target.textContent!.trim();
       if (event.key == "Enter") {
         event.preventDefault();
         if (list) await add(list);
@@ -54,7 +62,7 @@
     const range = document.createRange();
     range.selectNodeContents(li);
     range.collapse(false);
-    const sel = window.getSelection() as Selection;
+    const sel = window.getSelection()!;
     sel.removeAllRanges();
     sel.addRange(range);
   };
@@ -81,7 +89,7 @@
     ) {
       const newList = document.querySelector(".new");
       if (newList) {
-        const list = (newList.textContent as string).trim();
+        const list = newList.textContent!.trim();
         if (list) await add(list);
         else newList.remove();
       }
