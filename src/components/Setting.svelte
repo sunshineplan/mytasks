@@ -30,7 +30,7 @@
           password1: p1,
           password2: p2,
         },
-        true
+        true,
       );
       if (resp.ok) {
         const json = await resp.json();
@@ -38,7 +38,7 @@
           await fire(
             "Success",
             "Your password has changed. Please Re-login!",
-            "success"
+            "success",
           );
           dispatch("reload");
           $component = "show";

@@ -12,29 +12,26 @@
   export let incompleteTasks: Task[] = [];
 
   onMount(() => {
-    const sortable = new Sortable(
-      document.querySelector("#tasks") as HTMLElement,
-      {
-        animation: 150,
-        delay: 200,
-        swapThreshold: 0.5,
-        onUpdate,
-      }
-    );
+    const sortable = new Sortable(document.querySelector("#tasks")!, {
+      animation: 150,
+      delay: 200,
+      swapThreshold: 0.5,
+      onUpdate,
+    });
     return () => sortable.destroy();
   });
 
   const onUpdate = async (event: Sortable.SortableEvent) => {
     const resp = await post("/task/reorder", {
       list: $current.list,
-      orig: incompleteTasks[event.oldIndex as number].id,
-      dest: incompleteTasks[event.newIndex as number].id,
+      orig: incompleteTasks[event.oldIndex!].id,
+      dest: incompleteTasks[event.newIndex!].id,
     });
     if (resp.ok) {
       if ((await resp.text()) == "1") {
-        const task = incompleteTasks[event.oldIndex as number];
-        incompleteTasks.splice(event.oldIndex as number, 1);
-        incompleteTasks.splice(event.newIndex as number, 0, task);
+        const task = incompleteTasks[event.oldIndex!];
+        incompleteTasks.splice(event.oldIndex!, 1);
+        incompleteTasks.splice(event.newIndex!, 0, task);
       } else {
         await fire("Error", "Failed to reorder task", "error");
         dispatch("reload");

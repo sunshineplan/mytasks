@@ -27,10 +27,10 @@
   };
   const promise = getInfo();
 
-  const components = {
+  const components = <{ [component: string]: any }>{
     setting: Setting,
     show: Show,
-  } as { [component: string]: any };
+  };
 
   const setting = () => {
     if (window.innerWidth <= 900) $showSidebar = false;

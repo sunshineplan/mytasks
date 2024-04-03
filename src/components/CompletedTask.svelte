@@ -17,7 +17,7 @@
         $lists[index].incomplete++;
         $lists[index].completed--;
         index = $tasks[$current.list].completed.findIndex(
-          (i) => task.id === i.id
+          (i) => task.id === i.id,
         );
         $tasks[$current.list].incomplete = [
           {
@@ -43,7 +43,7 @@
         const json = await resp.json();
         if (json.status) {
           const index = $tasks[$current.list].completed.findIndex(
-            (i) => task.id === i.id
+            (i) => task.id === i.id,
           );
           $tasks[$current.list].completed.splice(index, 1);
           dispatch("refresh");

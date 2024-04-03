@@ -38,7 +38,7 @@
     });
     if (resp.ok) {
       $tasks[$current.list].completed = completedTasks.concat(
-        await resp.json()
+        await resp.json(),
       );
       dispatch("refresh");
     } else await fire("Error", await resp.text(), "error");
