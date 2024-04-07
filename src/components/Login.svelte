@@ -10,11 +10,11 @@
 
   const login = async () => {
     if (
-      !document.querySelector<HTMLSelectElement>("#username")!.checkValidity()
+      !document.querySelector<HTMLInputElement>("#username")!.checkValidity()
     )
       await fire("Error", "Username cannot be empty.", "error");
     else if (
-      !document.querySelector<HTMLSelectElement>("#password")!.checkValidity()
+      !document.querySelector<HTMLInputElement>("#password")!.checkValidity()
     )
       await fire("Error", "Password cannot be empty.", "error");
     else {
