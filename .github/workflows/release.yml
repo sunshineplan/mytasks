@@ -61,10 +61,8 @@ jobs:
           npm install
           npm run build
           go build -ldflags "-s -w"
+          tar cvzf release.tar.gz dist scripts mytasks config.ini.default
           echo "date=$(TZ=PRC date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-
-      - name: Pack
-        run: tar cvzf release.tar.gz dist scripts mytasks config.ini.default
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
