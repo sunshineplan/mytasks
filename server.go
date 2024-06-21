@@ -125,7 +125,7 @@ func run() error {
 	base.POST("/completed/more", moreCompleted)
 	base.POST("/completed/revert/:id", revertCompleted)
 	base.POST("/completed/delete/:id", deleteCompleted)
-	base.POST("/completed/empty/:id", emptyCompleted)
+	base.POST("/completed/empty", emptyCompleted)
 
 	router.NoRoute(func(c *gin.Context) {
 		c.Redirect(302, "/")
