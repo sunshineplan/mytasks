@@ -106,7 +106,7 @@ func run() error {
 
 	router.GET("/info", info)
 	router.GET("/poll", authRequired, func(c *gin.Context) {
-		time.Sleep(time.Minute)
+		time.Sleep(*poll)
 		user, _ := getUser(c)
 		last, _ := c.Cookie("last")
 		if user.Last == last {
