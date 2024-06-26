@@ -7,21 +7,15 @@ import (
 	"encoding/pem"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	"github.com/sunshineplan/utils/log"
 )
 
 func run() error {
-	if *logPath != "" {
-		svc.Logger = log.New(*logPath, "", log.LstdFlags)
-		gin.DefaultWriter = svc.Logger
-		gin.DefaultErrorWriter = svc.Logger
-	}
-
 	if err := initDB(); err != nil {
 		return err
 	}
@@ -111,9 +105,19 @@ func run() error {
 	}
 
 	router.GET("/info", info)
+	router.GET("/poll", authRequired, func(c *gin.Context) {
+		time.Sleep(time.Minute)
+		user, _ := getUser(c)
+		last, _ := c.Cookie("last")
+		if user.Last == last {
+			c.String(200, "ok")
+		} else {
+			c.Status(409)
+		}
+	})
 
 	base := router.Group("/")
-	base.Use(authRequired)
+	base.Use(authRequired, checkRequired)
 	base.POST("/get", get)
 	base.POST("/list/edit", editList)
 	base.POST("/list/delete", deleteList)

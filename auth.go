@@ -4,38 +4,58 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sunshineplan/database/mongodb"
 	"github.com/sunshineplan/password"
+	"github.com/sunshineplan/utils/cache"
 )
+
+var userCache = cache.New[any, user](true)
 
 type user struct {
 	ID       string `json:"_id" bson:"_id"`
 	Username string
 	Password string
+	Last     string
 }
 
 func authRequired(c *gin.Context) {
-	if sessions.Default(c).Get("id") == nil {
+	if user, err := getUser(c); user.ID == "" || err == mongodb.ErrNoDocuments {
 		c.AbortWithStatus(401)
+	} else if user.ID != "" {
+		c.Set("id", user.ID)
+		c.Set("username", user.Username)
+		c.Set("last", user.Last)
+	} else {
+		c.AbortWithStatus(500)
 	}
 }
 
-func getUser(c *gin.Context) (id, username string, err error) {
-	session := sessions.Default(c)
-	sid := session.Get("id")
-	username, _ = session.Get("username").(string)
-	if *universal {
-		var user user
-		if err = accountClient.FindOne(mongodb.M{"uid": sid}, nil, &user); err != nil {
-			return
-		}
-		id = user.ID
+func getUser(c *gin.Context) (usr user, err error) {
+	id := sessions.Default(c).Get("id")
+	if id == nil {
 		return
 	}
-	id, _ = sid.(string)
+	var ok bool
+	if usr, ok = userCache.Get(id); ok {
+		return
+	}
+	var filter any
+	if *universal {
+		filter = mongodb.M{"uid": id}
+	} else {
+		id, _ := accountClient.ObjectID(id.(string))
+		filter = mongodb.M{"_id": id.Interface()}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if err = accountClient.FindOne(filter, nil, &usr); err != nil {
+		return
+	}
+	userCache.Set(usr.ID, usr, 24*time.Hour, nil)
 	return
 }
 
@@ -74,7 +94,7 @@ func login(c *gin.Context) {
 		if err = password.CompareHashAndPassword(auth{login.Username, c.ClientIP()}, user.Password, login.Password); err != nil {
 			if errors.Is(err, password.ErrIncorrectPassword) {
 				message = err.Error()
-			} else {
+			} else if user.Password != login.Password {
 				svc.Print(err)
 				c.String(500, "Internal Server Error")
 				return
@@ -85,7 +105,6 @@ func login(c *gin.Context) {
 			session := sessions.Default(c)
 			session.Clear()
 			session.Set("id", user.ID)
-			session.Set("username", user.Username)
 
 			if login.Rememberme {
 				session.Options(sessions.Options{HttpOnly: true, MaxAge: 856400 * 365})

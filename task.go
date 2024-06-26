@@ -91,43 +91,38 @@ func addTask(t task, userID string, completed bool) (any, error) {
 	return client.InsertOne(doc)
 }
 
-func deleteTask(id mongodb.ObjectID, userID string, completed bool) error {
+func deleteTask(id mongodb.ObjectID, userID string, completed bool) (err error) {
 	var client mongodb.Client
 	if completed {
 		client = completedClient
 	} else {
 		client = incompleteClient
 	}
-
 	var task task
-	if err := client.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
-		return err
+	if err = client.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
+		return
 	}
-
 	if !completed {
-		_, err := client.UpdateMany(
+		_, err = client.UpdateMany(
 			mongodb.M{"user": userID, "list": task.List, "seq": mongodb.M{"$gt": task.Seq}},
 			mongodb.M{"$inc": mongodb.M{"seq": -1}},
 			nil,
 		)
-		return err
 	}
-
-	return nil
+	return
 }
 
-func reorderTask(userID, list string, orig, dest mongodb.ObjectID) error {
+func reorderTask(userID, list string, orig, dest mongodb.ObjectID) (err error) {
 	var origTask, destTask task
-
 	c := make(chan error, 1)
 	go func() {
 		c <- incompleteClient.FindOne(mongodb.M{"_id": orig.Interface()}, nil, &origTask)
 	}()
-	if err := incompleteClient.FindOne(mongodb.M{"_id": dest.Interface()}, nil, &destTask); err != nil {
-		return err
+	if err = incompleteClient.FindOne(mongodb.M{"_id": dest.Interface()}, nil, &destTask); err != nil {
+		return
 	}
-	if err := <-c; err != nil {
-		return err
+	if err = <-c; err != nil {
+		return
 	}
 
 	if origTask.List != list || destTask.List != list {
@@ -142,18 +137,13 @@ func reorderTask(userID, list string, orig, dest mongodb.ObjectID) error {
 		filter = mongodb.M{"user": userID, "list": list, "seq": mongodb.M{"$gt": origTask.Seq, "$lte": destTask.Seq}}
 		update = mongodb.M{"$inc": mongodb.M{"seq": -1}}
 	}
-
-	if _, err := incompleteClient.UpdateMany(filter, update, nil); err != nil {
-		return err
+	if _, err = incompleteClient.UpdateMany(filter, update, nil); err != nil {
+		return
 	}
-
-	if _, err := incompleteClient.UpdateOne(
+	_, err = incompleteClient.UpdateOne(
 		mongodb.M{"_id": orig.Interface()},
 		mongodb.M{"$set": mongodb.M{"seq": destTask.Seq}},
 		nil,
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
+	return
 }

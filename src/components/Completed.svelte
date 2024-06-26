@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import CompletedTask from "./CompletedTask.svelte";
   import { fire, confirm, post } from "../misc";
-  import { current, tasks, lists } from "../stores";
+  import { current, tasks, lists } from "../task";
 
   const dispatch = createEventDispatcher();
 

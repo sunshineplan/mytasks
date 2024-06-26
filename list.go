@@ -68,14 +68,14 @@ func editList(c *gin.Context) {
 	}
 	data.New = strings.TrimSpace(data.New)
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
 	}
 
-	lists, err := getList(userID)
+	lists, err := getList(user.ID)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
@@ -103,14 +103,14 @@ func editList(c *gin.Context) {
 		ec := make(chan error, 1)
 		go func() {
 			_, err := incompleteClient.UpdateMany(
-				mongodb.M{"user": userID, "list": data.Old},
+				mongodb.M{"user": user.ID, "list": data.Old},
 				mongodb.M{"$set": mongodb.M{"list": data.New}},
 				nil,
 			)
 			ec <- err
 		}()
 		if _, err := completedClient.UpdateMany(
-			mongodb.M{"user": userID, "list": data.Old},
+			mongodb.M{"user": user.ID, "list": data.Old},
 			mongodb.M{"$set": mongodb.M{"list": data.New}},
 			nil,
 		); err != nil {
@@ -124,7 +124,7 @@ func editList(c *gin.Context) {
 			c.String(500, "")
 			return
 		}
-
+		newLastModified(user.ID, c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -140,7 +140,7 @@ func deleteList(c *gin.Context) {
 		return
 	}
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
@@ -149,10 +149,10 @@ func deleteList(c *gin.Context) {
 
 	ec := make(chan error, 1)
 	go func() {
-		_, err := incompleteClient.DeleteMany(mongodb.M{"user": userID, "list": data.List})
+		_, err := incompleteClient.DeleteMany(mongodb.M{"user": user.ID, "list": data.List})
 		ec <- err
 	}()
-	if _, err := completedClient.DeleteMany(mongodb.M{"user": userID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(mongodb.M{"user": user.ID, "list": data.List}); err != nil {
 		svc.Println("Failed to delete completed tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return
@@ -163,6 +163,6 @@ func deleteList(c *gin.Context) {
 		c.JSON(200, gin.H{"status": 0})
 		return
 	}
-
+	newLastModified(user.ID, c)
 	c.JSON(200, gin.H{"status": 1})
 }

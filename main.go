@@ -5,9 +5,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
+	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/gin-gonic/gin"
 	"github.com/sunshineplan/metadata"
 	"github.com/sunshineplan/password"
 	"github.com/sunshineplan/service"
@@ -80,6 +82,12 @@ func main() {
 	flag.StringVar(&svc.Options.PIDFile, "pid", "/var/run/mytasks.pid", "PID file path")
 	flags.SetConfigFile(joinPath(dir(self), "config.ini"))
 	flags.Parse()
+
+	if *logPath != "" {
+		svc.SetLogger(*logPath, "", log.LstdFlags)
+		gin.DefaultWriter = svc.Logger
+		gin.DefaultErrorWriter = svc.Logger
+	}
 
 	password.SetMaxAttempts(*maxRetry)
 	if *pemPath != "" {

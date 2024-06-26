@@ -33,6 +33,6 @@ func initDB() (err error) {
 	return completedClient.Connect()
 }
 
-func test() (err error) {
+func test() error {
 	return initDB()
 }

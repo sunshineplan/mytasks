@@ -52,19 +52,19 @@ export const post = async (url: string, data?: object, universal?: boolean) => {
     body: JSON.stringify(data)
   }
   if (universal) init.credentials = 'include'
-  loading.update(n => n + 1)
+  loading.start()
   try {
     resp = await fetch(url, init)
   } catch (e) {
     let message = ''
-    if (typeof e === "string") {
+    if (typeof e === 'string') {
       message = e
     } else if (e instanceof Error) {
       message = e.message
     }
-    resp = new Response(message, { "status": 500 })
+    resp = new Response(message, { status: 500 })
   }
-  loading.update(n => n - 1)
+  loading.end()
   if (resp.status == 401) {
     await fire('Error', 'Login status has changed. Please Re-login!', 'error')
     window.location.href = '/'

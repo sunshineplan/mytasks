@@ -5,24 +5,25 @@ import (
 )
 
 func info(c *gin.Context) {
-	info := gin.H{}
-
-	id, username, _ := getUser(c)
-	if username == "" {
-		c.JSON(200, info)
+	user, _ := getUser(c)
+	if user.Username == "" {
+		c.JSON(200, struct{}{})
 		return
 	}
-	info["username"] = username
-
-	lists, err := getList(id)
-	if err != nil {
-		svc.Println("Failed to get list:", err)
-		c.String(500, "")
-		return
+	c.Set("last", user.Last)
+	last, ok := checkLastModified(c)
+	c.SetCookie("last", last, 856400*365, "", "", false, true)
+	if ok {
+		lists, err := getList(user.ID)
+		if err != nil {
+			svc.Println("Failed to get list:", err)
+			c.String(500, "")
+			return
+		}
+		c.JSON(200, gin.H{"username": user.Username, "lists": lists})
+	} else {
+		c.Status(409)
 	}
-	info["lists"] = lists
-
-	c.JSON(200, info)
 }
 
 func get(c *gin.Context) {
@@ -32,7 +33,7 @@ func get(c *gin.Context) {
 		return
 	}
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
@@ -43,11 +44,11 @@ func get(c *gin.Context) {
 	ec := make(chan error, 1)
 	go func() {
 		var err error
-		incomplete, err = getTask(data.List, userID, false)
+		incomplete, err = getTask(data.List, user.ID, false)
 		ec <- err
 	}()
 
-	completed, err := getTask(data.List, userID, true)
+	completed, err := getTask(data.List, user.ID, true)
 	if err != nil {
 		svc.Println("Failed to get completed tasks:", err)
 		c.String(500, "")

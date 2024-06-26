@@ -3,7 +3,7 @@
   import { onMount, createEventDispatcher } from "svelte";
   import IncompleteTask from "./IncompleteTask.svelte";
   import { fire, post } from "../misc";
-  import { current } from "../stores";
+  import { current } from "../task";
 
   const dispatch = createEventDispatcher();
 

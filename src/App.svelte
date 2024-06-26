@@ -1,33 +1,21 @@
 <script lang="ts">
+  import type { ComponentType } from "svelte";
   import Login from "./components/Login.svelte";
   import Setting from "./components/Setting.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Show from "./components/Show.svelte";
   import { fire, post } from "./misc";
-  import {
-    username as user,
-    current,
-    showSidebar,
-    component,
-    loading,
-    lists,
-    reset,
-  } from "./stores";
+  import { username as user, current, lists, init } from "./task";
+  import { showSidebar, component, loading } from "./stores";
 
   const getInfo = async () => {
-    $loading++;
-    const resp = await fetch("/info");
-    const info = await resp.json();
-    if (Object.keys(info).length) {
-      $user = info.username;
-      $lists = info.lists;
-    } else reset();
-    $loading--;
-    if ($lists.length) if (!$current.list) $current = $lists[0];
+    loading.start();
+    await init();
+    loading.end();
   };
   const promise = getInfo();
 
-  const components = <{ [component: string]: any }>{
+  const components: { [component: string]: ComponentType } = {
     setting: Setting,
     show: Show,
   };

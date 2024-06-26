@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { fire, post, confirm } from "../misc";
-  import { current, lists, tasks } from "../stores";
+  import { current, lists, tasks } from "../task";
 
   const dispatch = createEventDispatcher();
 

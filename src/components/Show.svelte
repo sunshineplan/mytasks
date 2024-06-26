@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
   import { fire, confirm, post, pasteText } from "../misc";
-  import { current, lists, tasks, loading } from "../stores";
+  import { current, lists, tasks, poll, init } from "../task";
+  import { loading } from "../stores";
 
   const dispatch = createEventDispatcher();
 
@@ -28,6 +29,7 @@
   const getTasks = async (force?: boolean) => {
     if (!force) showCompleted = false;
     if (!$tasks.hasOwnProperty($current.list) || force) {
+      if (!$current.list) if ($lists.length) $current = $lists[0];
       const resp = await post("/get", { list: $current.list });
       if (resp.ok) $tasks[$current.list] = await resp.json();
       else {
@@ -230,6 +232,28 @@
       }
     }
   };
+
+  const subscribe = async (signal: AbortSignal) => {
+    const resp = await poll(signal);
+    if (resp.status == 200) await subscribe(signal);
+    else if (resp.status == 401) {
+      dispatch("reload");
+    } else if (resp.status == 409) {
+      loading.start();
+      await init();
+      await getTasks(true);
+      loading.end();
+      await subscribe(signal);
+    } else {
+      await new Promise((sleep) => setTimeout(sleep, 30000));
+      await subscribe(signal);
+    }
+  };
+  onMount(() => {
+    const controller = new AbortController();
+    subscribe(controller.signal);
+    return () => controller.abort();
+  });
 </script>
 
 <svelte:head>

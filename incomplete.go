@@ -18,20 +18,20 @@ func addIncomplete(c *gin.Context) {
 		return
 	}
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
 	}
 
-	insertID, err := addTask(task, userID, false)
+	insertID, err := addTask(task, user.ID, false)
 	if err != nil {
 		svc.Println("Failed to add incomplete task:", err)
 		c.String(500, "")
 		return
 	}
-
+	newLastModified(user.ID, c)
 	c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
 }
 
@@ -50,12 +50,12 @@ func editIncomplete(c *gin.Context) {
 	}
 	task.Task = strings.TrimSpace(task.Task)
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
-	} else if checkIncomplete(id, userID) {
+	} else if checkIncomplete(id, user.ID) {
 		if _, err := incompleteClient.UpdateOne(
 			mongodb.M{"_id": id.Interface()},
 			mongodb.M{"$set": mongodb.M{"task": task.Task}},
@@ -65,7 +65,7 @@ func editIncomplete(c *gin.Context) {
 			c.String(500, "")
 			return
 		}
-
+		newLastModified(user.ID, c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -80,12 +80,12 @@ func completeTask(c *gin.Context) {
 		c.String(400, "")
 		return
 	}
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
-	} else if checkIncomplete(id, userID) {
+	} else if checkIncomplete(id, user.ID) {
 		var task task
 		if err := incompleteClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
 			svc.Println("Failed to get incomplete task:", err)
@@ -93,13 +93,13 @@ func completeTask(c *gin.Context) {
 			return
 		}
 
-		insertID, err := addTask(task, userID, true)
+		insertID, err := addTask(task, user.ID, true)
 		if err != nil {
 			svc.Println("Failed to add completed task:", err)
 			c.String(500, "")
 			return
 		}
-
+		newLastModified(user.ID, c)
 		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
 		return
 	}
@@ -114,18 +114,18 @@ func deleteIncomplete(c *gin.Context) {
 		c.String(400, "")
 		return
 	}
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
-	} else if checkIncomplete(id, userID) {
-		if err := deleteTask(id, userID, false); err != nil {
+	} else if checkIncomplete(id, user.ID) {
+		if err := deleteTask(id, user.ID, false); err != nil {
 			svc.Println("Failed to delete completed task:", err)
 			c.JSON(200, gin.H{"status": 0})
 			return
 		}
-
+		newLastModified(user.ID, c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -152,21 +152,21 @@ func reorder(c *gin.Context) {
 		return
 	}
 
-	userID, _, err := getUser(c)
+	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
 		c.String(500, "")
 		return
-	} else if !checkIncomplete(origID, userID) || !checkIncomplete(destID, userID) {
+	} else if !checkIncomplete(origID, user.ID) || !checkIncomplete(destID, user.ID) {
 		c.String(403, "")
 		return
 	}
 
-	if err := reorderTask(userID, data.List, origID, destID); err != nil {
+	if err := reorderTask(user.ID, data.List, origID, destID); err != nil {
 		svc.Println("Failed to reorder tasks:", err)
 		c.String(500, "")
 		return
 	}
-
+	newLastModified(user.ID, c)
 	c.String(200, "1")
 }
