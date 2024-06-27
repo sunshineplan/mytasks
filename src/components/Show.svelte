@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Cookies from "js-cookie";
   import { onMount, createEventDispatcher } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
@@ -238,7 +239,7 @@
     if (resp.status == 200) await subscribe(signal);
     else if (resp.status == 401) {
       dispatch("reload");
-    } else if (resp.status == 409) {
+    } else if (Cookies.get("last") != (await resp.text())) {
       loading.start();
       await init();
       await getTasks(true);

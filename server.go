@@ -107,13 +107,8 @@ func run() error {
 	router.GET("/info", info)
 	router.GET("/poll", authRequired, func(c *gin.Context) {
 		time.Sleep(*poll)
-		user, _ := getUser(c)
-		last, _ := c.Cookie("last")
-		if user.Last == last {
-			c.String(200, "ok")
-		} else {
-			c.Status(409)
-		}
+		last, _ := c.Get("last")
+		c.String(200, last.(string))
 	})
 
 	base := router.Group("/")

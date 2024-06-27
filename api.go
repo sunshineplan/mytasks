@@ -12,7 +12,7 @@ func info(c *gin.Context) {
 	}
 	c.Set("last", user.Last)
 	last, ok := checkLastModified(c)
-	c.SetCookie("last", last, 856400*365, "", "", false, true)
+	c.SetCookie("last", last, 856400*365, "", "", false, false)
 	if ok {
 		lists, err := getList(user.ID)
 		if err != nil {
