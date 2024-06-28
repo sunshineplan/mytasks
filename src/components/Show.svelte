@@ -236,15 +236,16 @@
 
   const subscribe = async (signal: AbortSignal) => {
     const resp = await poll(signal);
-    if (resp.status == 200) await subscribe(signal);
-    else if (resp.status == 401) {
-      dispatch("reload");
-    } else if (Cookies.get("last") != (await resp.text())) {
-      loading.start();
-      await init();
-      await getTasks(true);
-      loading.end();
+    if (resp.ok) {
+      if (Cookies.get("last") != (await resp.text())) {
+        loading.start();
+        await init();
+        await getTasks(true);
+        loading.end();
+      }
       await subscribe(signal);
+    } else if (resp.status == 401) {
+      dispatch("reload");
     } else {
       await new Promise((sleep) => setTimeout(sleep, 30000));
       await subscribe(signal);
