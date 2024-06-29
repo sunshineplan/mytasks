@@ -1,15 +1,11 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import CompletedTask from "./CompletedTask.svelte";
-  import { fire, confirm, post } from "../misc";
-  import { current, tasks, lists } from "../task";
-
-  const dispatch = createEventDispatcher();
+  import { confirm } from "../misc";
+  import { list, tasks, lists } from "../task";
 
   export let show = false;
-  export let completedTasks: Task[] = [];
 
-  $: index = $lists.findIndex((list) => list.list === $current.list);
+  $: index = $lists.findIndex((i) => i.list === $list.list);
 
   const expand = (event: MouseEvent) => {
     const target = event.target as Element;
@@ -17,31 +13,8 @@
   };
 
   const empty = async () => {
-    if (await confirm("All completed tasks")) {
-      const resp = await post("/completed/empty", { list: $current.list });
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json.status) {
-          $lists[index].completed = 0;
-          $tasks[$current.list].completed = [];
-          dispatch("refresh");
-          show = false;
-        } else await fire("Error", "Error", "error");
-      } else await fire("Error", await resp.text(), "error");
-    }
-  };
-
-  const more = async () => {
-    const resp = await post("/completed/more", {
-      list: $current.list,
-      start: completedTasks.length,
-    });
-    if (resp.ok) {
-      $tasks[$current.list].completed = completedTasks.concat(
-        await resp.json(),
-      );
-      dispatch("refresh");
-    } else await fire("Error", await resp.text(), "error");
+    if (await confirm("All completed tasks"))
+      if ((await tasks.empty()) == 0) show = false;
   };
 </script>
 
@@ -59,13 +32,13 @@
   </div>
   {#if show}
     <ul class="list-group list-group-flush" style="height:calc(50% - 85px)">
-      {#each completedTasks as task (task.id)}
-        <CompletedTask bind:task on:refresh on:reload />
+      {#each $tasks.completed as task (task.id)}
+        <CompletedTask bind:task />
       {/each}
-      {#if completedTasks.length < $lists[index].completed}
+      {#if $tasks.completed.length < $lists[index].completed}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-        <li class="list-group-item" on:click={more}>
+        <li class="list-group-item" on:click={async () => await tasks.get(15)}>
           <i class="icon">sync</i>
           <span class="load">Load more</span>
         </li>

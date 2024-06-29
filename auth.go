@@ -70,7 +70,7 @@ func login(c *gin.Context) {
 		Rememberme         bool
 	}
 	if err := c.BindJSON(&login); err != nil {
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 	login.Username = strings.ToLower(login.Username)
@@ -141,7 +141,7 @@ func chgpwd(c *gin.Context) {
 
 	var data struct{ Password, Password1, Password2 string }
 	if err := c.BindJSON(&data); err != nil {
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 	var err error
@@ -162,7 +162,7 @@ func chgpwd(c *gin.Context) {
 	var user user
 	if err := accountClient.FindOne(mongodb.M{"_id": id.Interface()}, nil, &user); err != nil {
 		svc.Print(err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	}
 
@@ -206,7 +206,7 @@ func chgpwd(c *gin.Context) {
 			nil,
 		); err != nil {
 			svc.Print(err)
-			c.String(500, "")
+			c.Status(500)
 			return
 		}
 
@@ -214,7 +214,7 @@ func chgpwd(c *gin.Context) {
 		session.Options(sessions.Options{MaxAge: -1})
 		if err := session.Save(); err != nil {
 			svc.Print(err)
-			c.String(500, "")
+			c.Status(500)
 			return
 		}
 

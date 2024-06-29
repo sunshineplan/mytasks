@@ -36,7 +36,7 @@
         if (json.status == 1) {
           if (rememberme) localStorage.setItem("rememberme", "true");
           else localStorage.removeItem("rememberme");
-          dispatch("info");
+          dispatch("load");
         } else await fire("Error", json.message, "error");
       } else await fire("Error", await resp.text(), "error");
     }

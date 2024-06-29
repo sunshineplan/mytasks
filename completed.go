@@ -15,14 +15,14 @@ func moreCompleted(c *gin.Context) {
 		Start int64
 	}
 	if err := c.BindJSON(&data); err != nil {
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 
 	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	}
 
@@ -33,7 +33,7 @@ func moreCompleted(c *gin.Context) {
 		&tasks,
 	); err != nil {
 		svc.Println("Failed to query tasks:", err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	}
 	for i := range tasks {
@@ -48,30 +48,30 @@ func revertCompleted(c *gin.Context) {
 	id, err := completedClient.ObjectID(c.Param("id"))
 	if err != nil {
 		svc.Print(err)
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	} else if checkCompleted(id, user.ID) {
 		var task task
 		if err := completedClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
 			svc.Println("Failed to get completed task:", err)
-			c.String(500, "")
+			c.Status(500)
 			return
 		}
 
-		insertID, err := addTask(task, user.ID, false)
+		insertID, seq, err := addTask(task, user.ID, false)
 		if err != nil {
 			svc.Println("Failed to add incomplete task:", err)
-			c.String(500, "")
+			c.Status(500)
 			return
 		}
 		newLastModified(user.ID, c)
-		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
+		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex(), "seq": seq})
 		return
 	}
 
@@ -82,18 +82,18 @@ func deleteCompleted(c *gin.Context) {
 	id, err := completedClient.ObjectID(c.Param("id"))
 	if err != nil {
 		svc.Print(err)
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	} else if checkCompleted(id, user.ID) {
 		if err := deleteTask(id, user.ID, true); err != nil {
 			svc.Println("Failed to delete completed task:", err)
-			c.String(500, "")
+			c.Status(500)
 			return
 		}
 		newLastModified(user.ID, c)
@@ -108,20 +108,20 @@ func emptyCompleted(c *gin.Context) {
 	var data struct{ List string }
 	if err := c.BindJSON(&data); err != nil {
 		svc.Print(err)
-		c.String(400, "")
+		c.Status(400)
 		return
 	}
 
 	user, err := getUser(c)
 	if err != nil {
 		svc.Print(err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	}
 
 	if _, err := completedClient.DeleteMany(mongodb.M{"user": user.ID, "list": data.List}); err != nil {
 		svc.Println("Failed to empty completed tasks:", err)
-		c.String(500, "")
+		c.Status(500)
 		return
 	}
 	newLastModified(user.ID, c)

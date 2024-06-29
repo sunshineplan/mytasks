@@ -1,6 +1,6 @@
 <script lang="ts">
   import { pasteText } from "../misc";
-  import { current, lists } from "../task";
+  import { list, lists } from "../task";
   import { component, showSidebar } from "../stores";
 
   let hover = false;
@@ -11,7 +11,7 @@
 
   const goto = (list: List) => {
     if (window.innerWidth <= 900) $showSidebar = false;
-    $current = list;
+    $list = list;
     $component = "show";
     const ul = document.querySelector("#tasks");
     if (ul) ul.scrollTop = 0;
@@ -19,13 +19,13 @@
 
   const add = async (list: string) => {
     list = list.trim();
-    document.querySelector(".new")!.remove();
+    document.querySelector(".new")?.remove();
     const newList: List = {
       list,
       incomplete: 0,
       completed: 0,
     };
-    $lists = [...$lists, newList];
+    await lists.add(newList);
     goto(newList);
   };
 
@@ -73,7 +73,7 @@
       const newList = document.querySelector(".new");
       if (newList) newList.remove();
       const len = $lists.length;
-      const index = $lists.findIndex((list) => list.list === $current.list);
+      const index = $lists.findIndex((list) => list.list === $list.list);
       if ($component === "show")
         if (event.key == "ArrowUp") {
           if (index > 0) goto($lists[index - 1]);
@@ -118,15 +118,15 @@
   <div class="list-menu">
     <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
     <ul class="navbar-nav" id="lists">
-      {#each $lists as list (list.list)}
+      {#each $lists as l (l.list)}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
         <li
           class="nav-link list"
-          class:active={$current.list === list.list && $component === "show"}
-          on:click={() => goto(list)}
+          class:active={$list.list === l.list && $component === "show"}
+          on:click={() => goto(l)}
         >
-          {list.list} ({list.incomplete})
+          {l.list} ({l.incomplete})
         </li>
       {/each}
     </ul>

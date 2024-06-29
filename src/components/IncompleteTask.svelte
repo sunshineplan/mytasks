@@ -1,78 +1,27 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { fire, confirm, post, pasteText } from "../misc";
-  import { current, lists, tasks } from "../task";
-
-  const dispatch = createEventDispatcher();
+  import { confirm, pasteText } from "../misc";
+  import { tasks } from "../task";
 
   export let selected = "";
   export let task: Task;
   let hover = false;
   let composition = false;
 
-  const complete = async () => {
-    const resp = await post("/task/complete/" + task.id);
-    if (resp.ok) {
-      const json = await resp.json();
-      if (json.status && json.id) {
-        let index = $lists.findIndex((list) => list.list === $current.list);
-        $lists[index].incomplete--;
-        $lists[index].completed++;
-        index = $tasks[$current.list].incomplete.findIndex(
-          (i) => task.id === i.id,
-        );
-        $tasks[$current.list].completed = [
-          {
-            id: json.id,
-            task: $tasks[$current.list].incomplete[index].task,
-            created: new Date().toLocaleString(),
-          },
-          ...$tasks[$current.list].completed,
-        ];
-        $tasks[$current.list].incomplete.splice(index, 1);
-        dispatch("refresh");
-        return;
-      }
-      await fire("Error", "Error", "error");
-      dispatch("reload");
-    } else await fire("Error", await resp.text(), "error");
-  };
-
   const del = async () => {
-    if (await confirm("This task")) {
-      const resp = await post("/task/delete/" + task.id);
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json.status) {
-          let index = $tasks[$current.list].incomplete.findIndex(
-            (i) => task.id === i.id,
-          );
-          $tasks[$current.list].incomplete.splice(index, 1);
-          index = $lists.findIndex((list) => list.list === $current.list);
-          $lists[index].incomplete--;
-          dispatch("refresh");
-        } else {
-          await fire("Error", "Error", "error");
-          dispatch("reload");
-        }
-      } else await fire("Error", await resp.text(), "error");
-    }
+    if (await confirm("This task")) await tasks.delete(task);
   };
 
-  const handleKeydown = (event: KeyboardEvent) => {
+  const handleKeydown = async (event: KeyboardEvent) => {
     if (composition) return;
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
       const target = event.target as Element;
       target.textContent = target.textContent!.trim();
-      dispatch("edit", {
-        id: task.id,
-        task: target.textContent,
-      });
+      await tasks.save(<Task>{ id: task.id, task: target.textContent });
       selected = "";
     }
   };
-  const handleClick = (event: MouseEvent) => {
+  const handleClick = async (event: MouseEvent) => {
     let target = event.target as HTMLElement;
     if (
       selected !== task.id &&
@@ -91,15 +40,9 @@
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
         selectedTask.textContent = selectedTask.textContent!.trim();
-        if (selected)
-          dispatch("edit", {
-            id: selected,
-            task: selectedTask.textContent,
-          });
-        else
-          dispatch("add", {
-            task: selectedTask.textContent,
-          });
+        let task = <Task>{ task: selectedTask.textContent };
+        if (selected) task.id = selected;
+        await tasks.save(task);
       }
       selected = task.id;
     }
@@ -116,7 +59,7 @@
   on:click={handleClick}
 >
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <i class="icon complete" on:click={complete} />
+  <i class="icon complete" on:click={async () => tasks.complete(task)} />
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <span
     class="task"
@@ -132,9 +75,7 @@
   >
     {task.task}
   </span>
-  <span class="created">
-    {new Date(task.created.replace("Z", "")).toLocaleDateString()}
-  </span>
+  <span class="created">{new Date(task.created).toLocaleDateString()}</span>
   {#if task.id === selected}
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <i class="icon delete" on:click={del}>delete</i>

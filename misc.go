@@ -26,7 +26,7 @@ func addUser(username string) error {
 		return err
 	}
 
-	if _, err := addTask(task{
+	if _, _, err := addTask(task{
 		Task: "Welcome to use mytasks!",
 		List: "My Tasks",
 	}, insertedID.(mongodb.ObjectID).Hex(), false); err != nil {
@@ -52,4 +52,18 @@ func deleteUser(username string) error {
 	}
 	svc.Print("Done!")
 	return nil
+}
+
+func checkExist(filter any) (ok bool, err error) {
+	var exist any
+	err = incompleteClient.FindOne(filter, nil, &exist)
+	if ok = err == nil; ok {
+		return
+	}
+	err = completedClient.FindOne(filter, nil, &exist)
+	ok = err == nil
+	if err == mongodb.ErrNoDocuments {
+		err = nil
+	}
+	return
 }

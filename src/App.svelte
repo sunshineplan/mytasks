@@ -5,15 +5,17 @@
   import Sidebar from "./components/Sidebar.svelte";
   import Show from "./components/Show.svelte";
   import { fire, post } from "./misc";
-  import { username as user, current, lists, init } from "./task";
+  import { init } from "./task";
   import { showSidebar, component, loading } from "./stores";
 
-  const getInfo = async () => {
+  let username: string = "";
+
+  const load = async () => {
     loading.start();
-    await init();
+    username = await init();
     loading.end();
   };
-  const promise = getInfo();
+  const promise = load();
 
   const components: { [component: string]: ComponentType } = {
     setting: Setting,
@@ -28,7 +30,7 @@
   const logout = async () => {
     const resp = await post(window.universal + "/logout", undefined, true);
     if (resp.ok) {
-      await getInfo();
+      await load();
       window.history.pushState({}, "", "/");
       $component = "show";
     } else await fire("Error", "Unknow error", "error");
@@ -37,11 +39,11 @@
 
 <nav class="navbar navbar-light topbar">
   <div class="d-flex" style="height: 100%">
-    <a class="brand" class:user={$user} href="/">My Tasks</a>
+    <a class="brand" class:user={username} href="/">My Tasks</a>
   </div>
-  {#if $user}
+  {#if username}
     <div class="navbar-nav flex-row">
-      <span class="nav-link">{$user}</span>
+      <span class="nav-link">{username}</span>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <span class="nav-link link" on:click={setting}>Setting</span>
@@ -54,23 +56,23 @@
   {/if}
 </nav>
 {#await promise then _}
-  {#if !$user}
+  {#if !username}
     {#if !$loading}
-      <Login on:info={getInfo} />
+      <Login on:load={load} />
     {/if}
   {:else}
-    <Sidebar on:reload={getInfo} />
+    <Sidebar />
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
       class="content"
       style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
       on:mousedown={() => ($showSidebar = false)}
     >
-      <svelte:component this={components[$component]} on:reload={getInfo} />
+      <svelte:component this={components[$component]} on:reload={load} />
     </div>
   {/if}
 {/await}
-<div class={$user ? "loading" : "initializing"} hidden={!$loading}>
+<div class={username ? "loading" : "initializing"} hidden={!$loading}>
   <div class="sk-wave sk-center">
     <div class="sk-wave-rect" />
     <div class="sk-wave-rect" />

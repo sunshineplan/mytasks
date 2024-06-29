@@ -1,58 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { fire, post, confirm } from "../misc";
-  import { current, lists, tasks } from "../task";
-
-  const dispatch = createEventDispatcher();
+  import { confirm } from "../misc";
+  import { tasks } from "../task";
 
   export let task: Task;
   let hover = false;
 
-  const revert = async () => {
-    const resp = await post("/completed/revert/" + task.id);
-    if (resp.ok) {
-      const json = await resp.json();
-      if (json.status && json.id) {
-        let index = $lists.findIndex((list) => list.list === $current.list);
-        $lists[index].incomplete++;
-        $lists[index].completed--;
-        index = $tasks[$current.list].completed.findIndex(
-          (i) => task.id === i.id,
-        );
-        $tasks[$current.list].incomplete = [
-          {
-            id: json.id,
-            task: $tasks[$current.list].completed[index].task,
-            created: new Date().toLocaleString(),
-          },
-          ...$tasks[$current.list].incomplete,
-        ];
-        $tasks[$current.list].completed.splice(index, 1);
-        dispatch("refresh");
-        return;
-      }
-      await fire("Error", "Error", "error");
-      dispatch("reload");
-    } else await fire("Error", await resp.text(), "error");
-  };
-
   const del = async () => {
-    if (await confirm("This completed task")) {
-      const resp = await post("/completed/delete/" + task.id);
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json.status) {
-          const index = $tasks[$current.list].completed.findIndex(
-            (i) => task.id === i.id,
-          );
-          $tasks[$current.list].completed.splice(index, 1);
-          dispatch("refresh");
-          return;
-        }
-        await fire("Error", "Error", "error");
-        dispatch("reload");
-      } else await fire("Error", await resp.text(), "error");
-    }
+    if (await confirm("This completed task")) await tasks.delete(task, true);
   };
 </script>
 
@@ -63,11 +17,10 @@
 >
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <i class="icon revert" on:click={revert}>done</i>
+  <i class="icon revert" on:click={async () => await tasks.revert(task)}>done</i
+  >
   <span class="task">{task.task}</span>
-  <span class="created">
-    {new Date(task.created.replace("Z", "")).toLocaleDateString()}
-  </span>
+  <span class="created">{new Date(task.created).toLocaleDateString()}</span>
   {#if hover}
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->

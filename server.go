@@ -96,7 +96,7 @@ func run() error {
 			session.Options(sessions.Options{MaxAge: -1})
 			if err := session.Save(); err != nil {
 				svc.Print(err)
-				c.String(500, "")
+				c.Status(500)
 				return
 			}
 			c.String(200, "bye")
@@ -104,18 +104,42 @@ func run() error {
 		auth.POST("/chgpwd", authRequired, chgpwd)
 	}
 
-	router.GET("/info", info)
+	router.GET("/info", func(c *gin.Context) {
+		user, _ := getUser(c)
+		if user.Username == "" {
+			c.Status(200)
+			return
+		}
+		c.Set("last", user.Last)
+		last, ok := checkLastModified(c)
+		c.SetCookie("last", last, 856400*365, "", "", false, false)
+		if ok {
+			c.String(200, user.Username)
+		} else {
+			c.Status(409)
+		}
+	})
 	router.GET("/poll", authRequired, func(c *gin.Context) {
 		time.Sleep(*poll)
-		last, _ := c.Get("last")
-		c.String(200, last.(string))
+		user, err := getUser(c)
+		if err != nil {
+			svc.Print(err)
+			c.Status(500)
+			return
+		}
+		if v, _ := c.Cookie("last"); v == user.Last {
+			c.Status(200)
+		} else {
+			c.String(200, user.Last)
+		}
 	})
 
 	base := router.Group("/")
 	base.Use(authRequired, checkRequired)
-	base.POST("/get", get)
+	base.POST("/list/get", getList)
 	base.POST("/list/edit", editList)
 	base.POST("/list/delete", deleteList)
+	base.POST("/task/get", getTask)
 	base.POST("/task/add", addIncomplete)
 	base.POST("/task/edit/:id", editIncomplete)
 	base.POST("/task/complete/:id", completeTask)

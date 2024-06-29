@@ -1,43 +1,26 @@
 <script lang="ts">
   import Sortable from "sortablejs";
-  import { onMount, createEventDispatcher } from "svelte";
+  import { onMount } from "svelte";
   import IncompleteTask from "./IncompleteTask.svelte";
-  import { fire, post } from "../misc";
-  import { current } from "../task";
-
-  const dispatch = createEventDispatcher();
+  import { tasks } from "../task";
 
   export let showCompleted = false;
   export let selected = "";
-  export let incompleteTasks: Task[] = [];
 
   onMount(() => {
     const sortable = new Sortable(document.querySelector("#tasks")!, {
       animation: 150,
       delay: 200,
       swapThreshold: 0.5,
-      onUpdate,
+      onUpdate: async (e) => {
+        await tasks.swap(
+          $tasks.incomplete[e.oldIndex!],
+          $tasks.incomplete[e.newIndex!],
+        );
+      },
     });
     return () => sortable.destroy();
   });
-
-  const onUpdate = async (event: Sortable.SortableEvent) => {
-    const resp = await post("/task/reorder", {
-      list: $current.list,
-      orig: incompleteTasks[event.oldIndex!].id,
-      dest: incompleteTasks[event.newIndex!].id,
-    });
-    if (resp.ok) {
-      if ((await resp.text()) == "1") {
-        const task = incompleteTasks[event.oldIndex!];
-        incompleteTasks.splice(event.oldIndex!, 1);
-        incompleteTasks.splice(event.newIndex!, 0, task);
-      } else {
-        await fire("Error", "Failed to reorder task", "error");
-        dispatch("reload");
-      }
-    } else await fire("Error", await resp.text(), "error");
-  };
 </script>
 
 <ul
@@ -47,15 +30,8 @@
     : "height:calc(100% - 170px)"}
   id="tasks"
 >
-  {#each incompleteTasks as task (task.id)}
-    <IncompleteTask
-      bind:selected
-      bind:task
-      on:refresh
-      on:add
-      on:edit
-      on:reload
-    />
+  {#each $tasks.incomplete as task (task.id)}
+    <IncompleteTask bind:selected bind:task />
   {/each}
 </ul>
 

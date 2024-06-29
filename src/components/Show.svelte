@@ -3,106 +3,59 @@
   import { onMount, createEventDispatcher } from "svelte";
   import Incomplete from "./Incomplete.svelte";
   import Completed from "./Completed.svelte";
-  import { fire, confirm, post, pasteText } from "../misc";
-  import { current, lists, tasks, poll, init } from "../task";
+  import { fire, confirm, poll, pasteText } from "../misc";
+  import { list, lists, tasks, init } from "../task";
   import { loading } from "../stores";
 
   const dispatch = createEventDispatcher();
 
-  let currentIncomplete: Task[] = [];
-  let currentCompleted: Task[] = [];
   let selected: string;
   let editable = false;
   let showCompleted = false;
   let composition = false;
 
-  const refresh = () => {
-    $lists = $lists;
-    currentIncomplete = $tasks[$current.list].incomplete;
-    currentCompleted = $tasks[$current.list].completed;
-  };
+  $: $list, tasks.get(), (editable = false);
 
-  const reload = async () => {
-    await getTasks(true);
-    dispatch("reload");
-  };
-
-  const getTasks = async (force?: boolean) => {
-    if (!force) showCompleted = false;
-    if (!$tasks.hasOwnProperty($current.list) || force) {
-      if (!$current.list) if ($lists.length) $current = $lists[0];
-      const resp = await post("/get", { list: $current.list });
-      if (resp.ok) $tasks[$current.list] = await resp.json();
-      else {
-        await fire("Error", await resp.text(), "error");
-        return;
+  const subscribe = async (signal: AbortSignal) => {
+    const resp = await poll(signal);
+    if (resp.ok) {
+      const last = await resp.text();
+      if (last && Cookies.get("last") != last) {
+        loading.start();
+        await init();
+        $list = $list;
+        loading.end();
       }
+      await subscribe(signal);
+    } else if (resp.status == 401) {
+      dispatch("reload");
+    } else {
+      await new Promise((sleep) => setTimeout(sleep, 30000));
+      await subscribe(signal);
     }
-    refresh();
   };
-
-  $: $current, getTasks(), (editable = false);
+  onMount(() => {
+    const controller = new AbortController();
+    subscribe(controller.signal);
+    return () => controller.abort();
+  });
 
   const editList = async (list: string) => {
     list = list.trim();
-    if ($current.list != list) {
-      const resp = await post("/list/edit", { old: $current.list, new: list });
-      let json: any = {};
-      if (resp.ok) {
-        json = await resp.json();
-        if (json.status) {
-          const index = $lists.findIndex((list) => list.list === $current.list);
-          $lists[index].list = list;
-          delete Object.assign($tasks, { [list]: currentIncomplete })[
-            $current.list
-          ];
-          $current = $lists[index];
-          return true;
-        }
-      } else json.message = await resp.text();
-      await fire("Error", json.message ? json.message : "Error", "error");
-      dispatch("reload");
-      return false;
-    }
+    if ($list.list != list) return (await lists.edit(list)) == 0;
     return true;
   };
   const add = async (task: string) => {
     task = task.trim();
-    if (task) {
-      const resp = await post("/task/add", { task, list: $current.list });
-      let json: any = {};
-      if (resp.ok) {
-        json = await resp.json();
-        if (json.status && json.id) {
-          const index = $lists.findIndex((list) => list.list === $current.list);
-          $lists[index].incomplete++;
-          $tasks[$current.list].incomplete = [
-            { id: json.id, task, created: new Date().toLocaleString() },
-            ...currentIncomplete,
-          ];
-          currentIncomplete = $tasks[$current.list].incomplete;
-          const selected = document.querySelector(".selected");
-          if (selected) selected.remove();
-          return;
-        }
-        await fire("Error", "Error", "error");
-      } else await fire("Error", await resp.text(), "error");
-    } else {
-      const selected = document.querySelector(".selected");
-      if (selected) selected.remove();
-    }
+    if (task) if ((await tasks.save(<Task>{ task })) != 0) return;
+    const selected = document.querySelector(".selected");
+    if (selected) selected.remove();
   };
   const edit = async (id: string, task: string) => {
     task = task.trim();
-    const index = currentIncomplete.findIndex((task) => task.id === id);
-    if (currentIncomplete[index].task != task) {
-      currentIncomplete[index].task = task;
-      const resp = await post("/task/edit/" + id, {
-        task,
-        list: $current.list,
-      });
-      if (!resp.ok) await fire("Error", await resp.text(), "error");
-    }
+    const index = $tasks.incomplete.findIndex((task) => task.id === id);
+    if ($tasks.incomplete[index].task != task)
+      await tasks.save(<Task>{ id, task });
   };
 
   const addTask = async () => {
@@ -155,13 +108,13 @@
       event.preventDefault();
       if (target.textContent) editable = !(await editList(target.textContent));
       else {
-        target.textContent = $current.list;
+        target.textContent = $list.list;
         editable = false;
       }
     } else if (event.key == "Escape") {
       if (target.textContent) target.textContent = "";
       else {
-        target.textContent = $current.list;
+        target.textContent = $list.list;
         editable = false;
       }
     }
@@ -170,23 +123,7 @@
     if (editable) {
       if ($lists.length == 1)
         await fire("Error", "You must have at least one list!", "error");
-      else if (await confirm("This list")) {
-        const resp = await post("/list/delete", { list: $current.list });
-        if (resp.ok) {
-          const json = await resp.json();
-          if (json.status) {
-            const index = $lists.findIndex(
-              (list) => list.list === $current.list,
-            );
-            $lists.splice(index, 1);
-            delete $tasks[$current.list];
-            $current = $lists[0];
-          } else {
-            await fire("Error", "Error", "error");
-            dispatch("reload");
-          }
-        } else await fire("Error", await resp.text(), "error");
-      }
+      else if (await confirm("This list")) await lists.delete();
     } else {
       editable = true;
       const target = document.querySelector<HTMLElement>("#list")!;
@@ -228,38 +165,15 @@
       list.textContent = list.textContent!.trim();
       if (list.textContent) editable = !(await editList(list.textContent));
       else {
-        target.textContent = $current.list;
+        target.textContent = $list.list;
         editable = false;
       }
     }
   };
-
-  const subscribe = async (signal: AbortSignal) => {
-    const resp = await poll(signal);
-    if (resp.ok) {
-      if (Cookies.get("last") != (await resp.text())) {
-        loading.start();
-        await init();
-        await getTasks(true);
-        loading.end();
-      }
-      await subscribe(signal);
-    } else if (resp.status == 401) {
-      dispatch("reload");
-    } else {
-      await new Promise((sleep) => setTimeout(sleep, 30000));
-      await subscribe(signal);
-    }
-  };
-  onMount(() => {
-    const controller = new AbortController();
-    subscribe(controller.signal);
-    return () => controller.abort();
-  });
 </script>
 
 <svelte:head>
-  <title>{$current.list} - My Tasks</title>
+  <title>{$list.list} - My Tasks</title>
 </svelte:head>
 
 <svelte:window on:click={handleWindowClick} />
@@ -282,7 +196,7 @@
         on:keydown={listKeydown}
         on:paste={pasteText}
       >
-        {$current.list}
+        {$list.list}
       </span>
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -294,21 +208,8 @@
     </div>
     <button class="btn btn-primary" on:click={addTask}>Add Task</button>
   </header>
-  <Incomplete
-    bind:showCompleted
-    bind:selected
-    bind:incompleteTasks={currentIncomplete}
-    on:add={async (e) => await add(e.detail.task)}
-    on:edit={async (e) => await edit(e.detail.id, e.detail.task)}
-    on:refresh={refresh}
-    on:reload={reload}
-  />
-  <Completed
-    bind:show={showCompleted}
-    bind:completedTasks={currentCompleted}
-    on:refresh={refresh}
-    on:reload={reload}
-  />
+  <Incomplete bind:showCompleted bind:selected />
+  <Completed bind:show={showCompleted} />
 </div>
 
 <style>

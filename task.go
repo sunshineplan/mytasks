@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/sunshineplan/database/mongodb"
 )
 
@@ -28,7 +29,7 @@ func checkTask(id mongodb.ObjectID, userID any, completed bool) bool {
 	return n > 0
 }
 
-func getTask(list, userID string, completed bool) ([]task, error) {
+func fetchTask(list, userID string, completed bool) ([]task, error) {
 	var client mongodb.Client
 	var opt *mongodb.FindOpt
 	if completed {
@@ -46,13 +47,50 @@ func getTask(list, userID string, completed bool) ([]task, error) {
 	for i := range tasks {
 		tasks[i].ID = tasks[i].ObjectID
 		tasks[i].ObjectID = ""
-		tasks[i].Seq = 0
 	}
 
 	return tasks, nil
 }
 
-func addTask(t task, userID string, completed bool) (any, error) {
+func getTask(c *gin.Context) {
+	var data struct{ List string }
+	if err := c.BindJSON(&data); err != nil {
+		c.Status(400)
+		return
+	}
+
+	user, err := getUser(c)
+	if err != nil {
+		svc.Print(err)
+		c.Status(500)
+		return
+	}
+
+	var incomplete []task
+	ec := make(chan error, 1)
+	go func() {
+		var err error
+		incomplete, err = fetchTask(data.List, user.ID, false)
+		ec <- err
+	}()
+
+	completed, err := fetchTask(data.List, user.ID, true)
+	if err != nil {
+		svc.Println("Failed to get completed tasks:", err)
+		c.Status(500)
+		return
+	}
+
+	if err := <-ec; err != nil {
+		svc.Println("Failed to get incomplete tasks:", err)
+		c.Status(500)
+		return
+	}
+
+	c.JSON(200, gin.H{"incomplete": incomplete, "completed": completed})
+}
+
+func addTask(t task, userID string, completed bool) (any, int, error) {
 	doc := struct {
 		Task    string `json:"task" bson:"task"`
 		List    string `json:"list" bson:"list"`
@@ -77,7 +115,7 @@ func addTask(t task, userID string, completed bool) (any, error) {
 			&mongodb.FindOpt{Sort: mongodb.M{"seq": -1}, Limit: 1},
 			&tasks,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		if len(tasks) == 0 {
@@ -87,8 +125,11 @@ func addTask(t task, userID string, completed bool) (any, error) {
 		}
 	}
 	doc.Created = client.Date(time.Now()).Interface()
-
-	return client.InsertOne(doc)
+	id, err := client.InsertOne(doc)
+	if err != nil {
+		return nil, 0, err
+	}
+	return id, doc.Seq, nil
 }
 
 func deleteTask(id mongodb.ObjectID, userID string, completed bool) (err error) {
