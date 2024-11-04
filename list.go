@@ -18,7 +18,7 @@ func getList(c *gin.Context) {
 	userID, _ := c.Get("id")
 	lists := []list{}
 	var incomplete, completed []struct {
-		List  string `json:"_id"`
+		List  string `json:"_id" bson:"_id"`
 		Count int
 	}
 	ec := make(chan error, 1)
@@ -113,7 +113,7 @@ func editList(c *gin.Context) {
 			c.Status(500)
 			return
 		}
-		newLastModified(userID, c)
+		newLastModified(userID.(string), c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -138,10 +138,10 @@ func deleteList(c *gin.Context) {
 
 	ec := make(chan error, 1)
 	go func() {
-		_, err := incompleteClient.DeleteMany(mongodb.M{"user": user.ID, "list": data.List})
+		_, err := incompleteClient.DeleteMany(mongodb.M{"user": user.ID.Hex(), "list": data.List})
 		ec <- err
 	}()
-	if _, err := completedClient.DeleteMany(mongodb.M{"user": user.ID, "list": data.List}); err != nil {
+	if _, err := completedClient.DeleteMany(mongodb.M{"user": user.ID.Hex(), "list": data.List}); err != nil {
 		svc.Println("Failed to delete completed tasks list:", err)
 		c.JSON(200, gin.H{"status": 0})
 		return
@@ -152,6 +152,6 @@ func deleteList(c *gin.Context) {
 		c.JSON(200, gin.H{"status": 0})
 		return
 	}
-	newLastModified(user.ID, c)
+	newLastModified(user.ID.Hex(), c)
 	c.JSON(200, gin.H{"status": 1})
 }

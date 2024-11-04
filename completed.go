@@ -5,7 +5,7 @@ import (
 	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkCompleted(id mongodb.ObjectID, userID any) bool {
+func checkCompleted(id mongodb.ObjectID, userID string) bool {
 	return checkTask(id, userID, true)
 }
 
@@ -28,7 +28,7 @@ func moreCompleted(c *gin.Context) {
 
 	tasks := []task{}
 	if err := completedClient.Find(
-		mongodb.M{"list": data.List, "user": user.ID},
+		mongodb.M{"list": data.List, "user": user.ID.Hex()},
 		&mongodb.FindOpt{Sort: mongodb.M{"created": 1}, Limit: 30, Skip: data.Start},
 		&tasks,
 	); err != nil {
@@ -37,8 +37,8 @@ func moreCompleted(c *gin.Context) {
 		return
 	}
 	for i := range tasks {
-		tasks[i].ID = tasks[i].ObjectID
-		tasks[i].ObjectID = ""
+		tasks[i].ID = tasks[i].ObjectID.Hex()
+		tasks[i].ObjectID = nil
 	}
 
 	c.JSON(200, tasks)
@@ -56,22 +56,22 @@ func revertCompleted(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if checkCompleted(id, user.ID) {
+	} else if checkCompleted(id, user.ID.Hex()) {
 		var task task
-		if err := completedClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
+		if err := completedClient.FindOneAndDelete(mongodb.M{"_id": id}, nil, &task); err != nil {
 			svc.Println("Failed to get completed task:", err)
 			c.Status(500)
 			return
 		}
 
-		insertID, seq, err := addTask(task, user.ID, false)
+		insertID, seq, err := addTask(task, user.ID.Hex(), false)
 		if err != nil {
 			svc.Println("Failed to add incomplete task:", err)
 			c.Status(500)
 			return
 		}
-		newLastModified(user.ID, c)
-		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex(), "seq": seq})
+		newLastModified(user.ID.Hex(), c)
+		c.JSON(200, gin.H{"status": 1, "id": insertID.Hex(), "seq": seq})
 		return
 	}
 
@@ -90,13 +90,13 @@ func deleteCompleted(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if checkCompleted(id, user.ID) {
-		if err := deleteTask(id, user.ID, true); err != nil {
+	} else if checkCompleted(id, user.ID.Hex()) {
+		if err := deleteTask(id, user.ID.Hex(), true); err != nil {
 			svc.Println("Failed to delete completed task:", err)
 			c.Status(500)
 			return
 		}
-		newLastModified(user.ID, c)
+		newLastModified(user.ID.Hex(), c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -124,6 +124,6 @@ func emptyCompleted(c *gin.Context) {
 		c.Status(500)
 		return
 	}
-	newLastModified(user.ID, c)
+	newLastModified(user.ID.Hex(), c)
 	c.JSON(200, gin.H{"status": 1})
 }

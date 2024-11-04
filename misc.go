@@ -15,7 +15,7 @@ func addUser(username string) error {
 
 	username = strings.TrimSpace(strings.ToLower(username))
 
-	insertedID, err := accountClient.InsertOne(
+	id, err := accountClient.InsertOne(
 		struct {
 			Username string `json:"username" bson:"username"`
 			Password string `json:"password" bson:"password"`
@@ -29,7 +29,7 @@ func addUser(username string) error {
 	if _, _, err := addTask(task{
 		Task: "Welcome to use mytasks!",
 		List: "My Tasks",
-	}, insertedID.(mongodb.ObjectID).Hex(), false); err != nil {
+	}, id.(mongodb.ObjectID).Hex(), false); err != nil {
 		return err
 	}
 	svc.Print("Done!")
@@ -54,7 +54,7 @@ func deleteUser(username string) error {
 	return nil
 }
 
-func checkExist(filter any) (ok bool, err error) {
+func checkExist(filter mongodb.M) (ok bool, err error) {
 	var exist any
 	err = incompleteClient.FindOne(filter, nil, &exist)
 	if ok = err == nil; ok {

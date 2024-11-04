@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/sunshineplan/database/mongodb"
-	"github.com/sunshineplan/database/mongodb/api"
+	"github.com/sunshineplan/database/mongodb/driver"
 	"github.com/sunshineplan/utils/retry"
 )
 
@@ -11,14 +11,14 @@ var incompleteClient mongodb.Client
 var completedClient mongodb.Client
 
 func initDB() (err error) {
-	var apiClient api.Client
+	var client driver.Client
 	if err = retry.Do(func() error {
-		return meta.Get("mytasks_mongo", &apiClient)
+		return meta.Get("mytasks_mongo", &client)
 	}, 3, 20); err != nil {
 		return err
 	}
 
-	account, incomplete, completed := apiClient, apiClient, apiClient
+	account, incomplete, completed := client, client, client
 	account.Collection = "account"
 	incomplete.Collection = "incomplete"
 	completed.Collection = "completed"

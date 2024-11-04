@@ -7,7 +7,7 @@ import (
 	"github.com/sunshineplan/database/mongodb"
 )
 
-func checkIncomplete(id mongodb.ObjectID, userID any) bool {
+func checkIncomplete(id mongodb.ObjectID, userID string) bool {
 	return checkTask(id, userID, false)
 }
 
@@ -29,14 +29,14 @@ func addIncomplete(c *gin.Context) {
 		return
 	}
 
-	insertID, seq, err := addTask(task, user.ID, false)
+	id, seq, err := addTask(task, user.ID.Hex(), false)
 	if err != nil {
 		svc.Println("Failed to add incomplete task:", err)
 		c.Status(500)
 		return
 	}
-	newLastModified(user.ID, c)
-	c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex(), "seq": seq})
+	newLastModified(user.ID.Hex(), c)
+	c.JSON(200, gin.H{"status": 1, "id": id.Hex(), "seq": seq})
 }
 
 func editIncomplete(c *gin.Context) {
@@ -59,9 +59,9 @@ func editIncomplete(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if checkIncomplete(id, user.ID) {
+	} else if checkIncomplete(id, user.ID.Hex()) {
 		if _, err := incompleteClient.UpdateOne(
-			mongodb.M{"_id": id.Interface()},
+			mongodb.M{"_id": id},
 			mongodb.M{"$set": mongodb.M{"task": task.Task}},
 			nil,
 		); err != nil {
@@ -69,7 +69,7 @@ func editIncomplete(c *gin.Context) {
 			c.Status(500)
 			return
 		}
-		newLastModified(user.ID, c)
+		newLastModified(user.ID.Hex(), c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -89,22 +89,22 @@ func completeTask(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if checkIncomplete(id, user.ID) {
+	} else if checkIncomplete(id, user.ID.Hex()) {
 		var task task
-		if err := incompleteClient.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
+		if err := incompleteClient.FindOneAndDelete(mongodb.M{"_id": id}, nil, &task); err != nil {
 			svc.Println("Failed to get incomplete task:", err)
 			c.Status(500)
 			return
 		}
 
-		insertID, _, err := addTask(task, user.ID, true)
+		id, _, err := addTask(task, user.ID.Hex(), true)
 		if err != nil {
 			svc.Println("Failed to add completed task:", err)
 			c.Status(500)
 			return
 		}
-		newLastModified(user.ID, c)
-		c.JSON(200, gin.H{"status": 1, "id": insertID.(mongodb.ObjectID).Hex()})
+		newLastModified(user.ID.Hex(), c)
+		c.JSON(200, gin.H{"status": 1, "id": id.Hex()})
 		return
 	}
 
@@ -123,13 +123,13 @@ func deleteIncomplete(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if checkIncomplete(id, user.ID) {
-		if err := deleteTask(id, user.ID, false); err != nil {
+	} else if checkIncomplete(id, user.ID.Hex()) {
+		if err := deleteTask(id, user.ID.Hex(), false); err != nil {
 			svc.Println("Failed to delete completed task:", err)
 			c.JSON(200, gin.H{"status": 0})
 			return
 		}
-		newLastModified(user.ID, c)
+		newLastModified(user.ID.Hex(), c)
 		c.JSON(200, gin.H{"status": 1})
 		return
 	}
@@ -161,16 +161,16 @@ func reorder(c *gin.Context) {
 		svc.Print(err)
 		c.Status(500)
 		return
-	} else if !checkIncomplete(origID, user.ID) || !checkIncomplete(destID, user.ID) {
+	} else if !checkIncomplete(origID, user.ID.Hex()) || !checkIncomplete(destID, user.ID.Hex()) {
 		c.String(403, "")
 		return
 	}
 
-	if err := reorderTask(user.ID, data.List, origID, destID); err != nil {
+	if err := reorderTask(user.ID.Hex(), data.List, origID, destID); err != nil {
 		svc.Println("Failed to reorder tasks:", err)
 		c.Status(500)
 		return
 	}
-	newLastModified(user.ID, c)
+	newLastModified(user.ID.Hex(), c)
 	c.String(200, "1")
 }

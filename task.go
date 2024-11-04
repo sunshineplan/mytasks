@@ -9,15 +9,15 @@ import (
 )
 
 type task struct {
-	ID       string    `json:"id"`
-	ObjectID string    `json:"_id,omitempty" bson:"_id"`
-	Task     string    `json:"task"`
-	List     string    `json:"list"`
-	Created  time.Time `json:"created"`
-	Seq      int       `json:"seq,omitempty"`
+	ID       string       `json:"id"`
+	ObjectID *mongodb.OID `json:"_id,omitempty" bson:"_id"`
+	Task     string       `json:"task"`
+	List     string       `json:"list"`
+	Created  time.Time    `json:"created"`
+	Seq      int          `json:"seq,omitempty"`
 }
 
-func checkTask(id mongodb.ObjectID, userID any, completed bool) bool {
+func checkTask(id mongodb.ObjectID, userID string, completed bool) bool {
 	var client mongodb.Client
 	if completed {
 		client = completedClient
@@ -25,7 +25,7 @@ func checkTask(id mongodb.ObjectID, userID any, completed bool) bool {
 		client = incompleteClient
 	}
 
-	n, _ := client.CountDocuments(mongodb.M{"_id": id.Interface(), "user": userID}, nil)
+	n, _ := client.CountDocuments(mongodb.M{"_id": id, "user": userID}, nil)
 	return n > 0
 }
 
@@ -45,8 +45,8 @@ func fetchTask(list, userID string, completed bool) ([]task, error) {
 		return nil, err
 	}
 	for i := range tasks {
-		tasks[i].ID = tasks[i].ObjectID
-		tasks[i].ObjectID = ""
+		tasks[i].ID = tasks[i].ObjectID.Hex()
+		tasks[i].ObjectID = nil
 	}
 
 	return tasks, nil
@@ -70,11 +70,11 @@ func getTask(c *gin.Context) {
 	ec := make(chan error, 1)
 	go func() {
 		var err error
-		incomplete, err = fetchTask(data.List, user.ID, false)
+		incomplete, err = fetchTask(data.List, user.ID.Hex(), false)
 		ec <- err
 	}()
 
-	completed, err := fetchTask(data.List, user.ID, true)
+	completed, err := fetchTask(data.List, user.ID.Hex(), true)
 	if err != nil {
 		svc.Println("Failed to get completed tasks:", err)
 		c.Status(500)
@@ -90,7 +90,7 @@ func getTask(c *gin.Context) {
 	c.JSON(200, gin.H{"incomplete": incomplete, "completed": completed})
 }
 
-func addTask(t task, userID string, completed bool) (any, int, error) {
+func addTask(t task, userID string, completed bool) (mongodb.ObjectID, int, error) {
 	doc := struct {
 		Task    string `json:"task" bson:"task"`
 		List    string `json:"list" bson:"list"`
@@ -124,12 +124,12 @@ func addTask(t task, userID string, completed bool) (any, int, error) {
 			doc.Seq = tasks[0].Seq + 1
 		}
 	}
-	doc.Created = client.Date(time.Now()).Interface()
+	doc.Created = client.Date(time.Now())
 	id, err := client.InsertOne(doc)
 	if err != nil {
 		return nil, 0, err
 	}
-	return id, doc.Seq, nil
+	return id.(mongodb.ObjectID), doc.Seq, nil
 }
 
 func deleteTask(id mongodb.ObjectID, userID string, completed bool) (err error) {
@@ -140,7 +140,7 @@ func deleteTask(id mongodb.ObjectID, userID string, completed bool) (err error) 
 		client = incompleteClient
 	}
 	var task task
-	if err = client.FindOneAndDelete(mongodb.M{"_id": id.Interface()}, nil, &task); err != nil {
+	if err = client.FindOneAndDelete(mongodb.M{"_id": id}, nil, &task); err != nil {
 		return
 	}
 	if !completed {
@@ -157,9 +157,9 @@ func reorderTask(userID, list string, orig, dest mongodb.ObjectID) (err error) {
 	var origTask, destTask task
 	c := make(chan error, 1)
 	go func() {
-		c <- incompleteClient.FindOne(mongodb.M{"_id": orig.Interface()}, nil, &origTask)
+		c <- incompleteClient.FindOne(mongodb.M{"_id": orig}, nil, &origTask)
 	}()
-	if err = incompleteClient.FindOne(mongodb.M{"_id": dest.Interface()}, nil, &destTask); err != nil {
+	if err = incompleteClient.FindOne(mongodb.M{"_id": dest}, nil, &destTask); err != nil {
 		return
 	}
 	if err = <-c; err != nil {
@@ -182,7 +182,7 @@ func reorderTask(userID, list string, orig, dest mongodb.ObjectID) (err error) {
 		return
 	}
 	_, err = incompleteClient.UpdateOne(
-		mongodb.M{"_id": orig.Interface()},
+		mongodb.M{"_id": orig},
 		mongodb.M{"$set": mongodb.M{"seq": destTask.Seq}},
 		nil,
 	)
