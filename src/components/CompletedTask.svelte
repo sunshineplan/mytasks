@@ -1,30 +1,37 @@
 <script lang="ts">
-  import { confirm } from "../misc";
-  import { tasks } from "../task";
+  import { confirm } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
 
-  export let task: Task;
-  let hover = false;
+  let {
+    task = $bindable(),
+  }: {
+    task: Task;
+  } = $props();
+
+  let hover = $state(false);
 
   const del = async () => {
-    if (await confirm("This completed task")) await tasks.delete(task, true);
+    if (await confirm("This completed task"))
+      await mytasks.deleteTask(task, true);
   };
 </script>
 
 <li
   class="list-group-item"
-  on:mouseenter={() => (hover = true)}
-  on:mouseleave={() => (hover = false)}
+  onmouseenter={() => (hover = true)}
+  onmouseleave={() => (hover = false)}
 >
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <i class="icon revert" on:click={async () => await tasks.revert(task)}>done</i
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <i class="icon revert" onclick={async () => await mytasks.revertTask(task)}
+    >done</i
   >
   <span class="task">{task.task}</span>
   <span class="created">{new Date(task.created).toLocaleDateString()}</span>
   {#if hover}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <i class="icon delete" on:click={del}>delete</i>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <i class="icon delete" onclick={del}>delete</i>
   {/if}
 </li>
 

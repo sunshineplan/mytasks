@@ -1,15 +1,15 @@
-declare interface Window {
+interface Window {
   universal: string
   pubkey: string
 }
 
-declare interface List {
+interface List {
   list: string
   incomplete: number
   completed: number
 }
 
-declare interface Task {
+interface Task {
   id: string
   list: string
   task: string
@@ -17,7 +17,7 @@ declare interface Task {
   seq?: number
 }
 
-declare interface Tasks {
+interface Tasks {
   list: string
   incomplete: Task[]
   completed: Task[]

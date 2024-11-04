@@ -1,14 +1,20 @@
 <script lang="ts">
-  import { confirm, pasteText } from "../misc";
-  import { tasks } from "../task";
+  import { confirm, pasteText } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
 
-  export let selected = "";
-  export let task: Task;
-  let hover = false;
-  let composition = false;
+  let {
+    selected = $bindable(),
+    task = $bindable(),
+  }: {
+    selected?: string;
+    task: Task;
+  } = $props();
+
+  let hover = $state(false);
+  let composition = $state(false);
 
   const del = async () => {
-    if (await confirm("This task")) await tasks.delete(task);
+    if (await confirm("This task")) await mytasks.deleteTask(task);
   };
 
   const handleKeydown = async (event: KeyboardEvent) => {
@@ -17,7 +23,7 @@
       event.preventDefault();
       const target = event.target as Element;
       target.textContent = target.textContent!.trim();
-      await tasks.save(<Task>{ id: task.id, task: target.textContent });
+      await mytasks.saveTask({ id: task.id, task: target.textContent } as Task);
       selected = "";
     }
   };
@@ -40,45 +46,45 @@
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
         selectedTask.textContent = selectedTask.textContent!.trim();
-        let task = <Task>{ task: selectedTask.textContent };
+        let task = { task: selectedTask.textContent } as Task;
         if (selected) task.id = selected;
-        await tasks.save(task);
+        await mytasks.saveTask(task);
       }
       selected = task.id;
     }
   };
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <li
   class="list-group-item"
   class:selected={task.id === selected}
-  on:mouseenter={() => (hover = true)}
-  on:mouseleave={() => (hover = false)}
-  on:click={handleClick}
+  onmouseenter={() => (hover = true)}
+  onmouseleave={() => (hover = false)}
+  onclick={handleClick}
 >
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <i class="icon complete" on:click={async () => tasks.complete(task)} />
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <i class="icon complete" onclick={async () => mytasks.completeTask(task)}></i>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
     class="task"
     contenteditable={task.id === selected}
-    on:compositionstart={() => {
+    oncompositionstart={() => {
       composition = true;
     }}
-    on:compositionend={() => {
+    oncompositionend={() => {
       composition = false;
     }}
-    on:keydown={handleKeydown}
-    on:paste={pasteText}
+    onkeydown={handleKeydown}
+    onpaste={pasteText}
   >
     {task.task}
   </span>
   <span class="created">{new Date(task.created).toLocaleDateString()}</span>
   {#if task.id === selected}
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <i class="icon delete" on:click={del}>delete</i>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <i class="icon delete" onclick={del}>delete</i>
   {:else if hover}
     <i class="icon">edit</i>
   {/if}

@@ -1,17 +1,15 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { encrypt, fire, post } from "../misc";
+  import { encrypt, fire, post } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
 
-  const dispatch = createEventDispatcher();
-
-  let username = "";
-  let password = "";
-  let rememberme = localStorage.getItem("rememberme") == "true" ? true : false;
+  let username = $state("");
+  let password = $state("");
+  let rememberme = $state(
+    localStorage.getItem("rememberme") == "true" ? true : false,
+  );
 
   const login = async () => {
-    if (
-      !document.querySelector<HTMLInputElement>("#username")!.checkValidity()
-    )
+    if (!document.querySelector<HTMLInputElement>("#username")!.checkValidity())
       await fire("Error", "Username cannot be empty.", "error");
     else if (
       !document.querySelector<HTMLInputElement>("#password")!.checkValidity()
@@ -20,7 +18,7 @@
     else {
       var pwd: string;
       if (window.pubkey && window.pubkey.length)
-        pwd = encrypt(window.pubkey, password) as string;
+        pwd = encrypt(window.pubkey, password);
       else pwd = password;
       const resp = await post(
         window.universal + "/login",
@@ -36,7 +34,7 @@
         if (json.status == 1) {
           if (rememberme) localStorage.setItem("rememberme", "true");
           else localStorage.removeItem("rememberme");
-          dispatch("load");
+          await mytasks.init();
         } else await fire("Error", json.message, "error");
       } else await fire("Error", await resp.text(), "error");
     }
@@ -51,8 +49,8 @@
   <title>Log In - My Tasks</title>
 </svelte:head>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="content" on:keyup={handleEnter}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="content" onkeyup={handleEnter}>
   <header>
     <h3
       class="d-flex justify-content-center align-items-center"
@@ -64,7 +62,7 @@
   <div class="login">
     <div class="mb-3">
       <label class="form-label" for="username">Username</label>
-      <!-- svelte-ignore a11y-autofocus -->
+      <!-- svelte-ignore a11y_autofocus -->
       <input
         class="form-control"
         bind:value={username}
@@ -97,7 +95,7 @@
       <label class="form-check-label" for="rememberme">Remember Me</label>
     </div>
     <hr />
-    <button class="btn btn-primary login" on:click={login}>Log In</button>
+    <button class="btn btn-primary login" onclick={login}>Log In</button>
   </div>
 </div>
 

@@ -1,11 +1,16 @@
 <script lang="ts">
   import Sortable from "sortablejs";
   import { onMount } from "svelte";
+  import { mytasks } from "../task.svelte";
   import IncompleteTask from "./IncompleteTask.svelte";
-  import { tasks } from "../task";
 
-  export let showCompleted = false;
-  export let selected = "";
+  let {
+    showCompleted = $bindable(),
+    selected = $bindable(),
+  }: {
+    showCompleted?: boolean;
+    selected?: string;
+  } = $props();
 
   onMount(() => {
     const sortable = new Sortable(document.querySelector("#tasks")!, {
@@ -13,9 +18,9 @@
       delay: 200,
       swapThreshold: 0.5,
       onUpdate: async (e) => {
-        await tasks.swap(
-          $tasks.incomplete[e.oldIndex!],
-          $tasks.incomplete[e.newIndex!],
+        await mytasks.swapTask(
+          mytasks.tasks.incomplete[e.oldIndex!],
+          mytasks.tasks.incomplete[e.newIndex!],
         );
       },
     });
@@ -30,8 +35,8 @@
     : "height:calc(100% - 170px)"}
   id="tasks"
 >
-  {#each $tasks.incomplete as task (task.id)}
-    <IncompleteTask bind:selected bind:task />
+  {#each mytasks.tasks.incomplete as task, i (task.id)}
+    <IncompleteTask bind:selected bind:task={mytasks.tasks.incomplete[i]} />
   {/each}
 </ul>
 

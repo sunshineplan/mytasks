@@ -1,84 +1,82 @@
 <script lang="ts">
-  import type { ComponentType } from "svelte";
+  import type { Component } from "svelte";
   import Login from "./components/Login.svelte";
   import Setting from "./components/Setting.svelte";
-  import Sidebar from "./components/Sidebar.svelte";
   import Show from "./components/Show.svelte";
-  import { fire, post } from "./misc";
-  import { init } from "./task";
-  import { showSidebar, component, loading } from "./stores";
+  import Sidebar from "./components/Sidebar.svelte";
+  import { fire, post } from "./misc.svelte";
+  import { loading, showSidebar } from "./misc.svelte";
+  import { mytasks } from "./task.svelte";
 
-  let username: string = "";
+  const promise = mytasks.init();
 
-  const load = async () => {
-    loading.start();
-    username = await init();
-    loading.end();
-  };
-  const promise = load();
-
-  const components: { [component: string]: ComponentType } = {
+  const components: { [component: string]: Component } = {
     setting: Setting,
     show: Show,
   };
 
+  const Content = $derived(components[mytasks.component]);
+
   const setting = () => {
-    if (window.innerWidth <= 900) $showSidebar = false;
-    $component = "setting";
+    if (window.innerWidth <= 900) showSidebar.close();
+    mytasks.component = "setting";
   };
 
   const logout = async () => {
+    mytasks.controller.abort();
     const resp = await post(window.universal + "/logout", undefined, true);
     if (resp.ok) {
-      await load();
+      await mytasks.init();
       window.history.pushState({}, "", "/");
-      $component = "show";
+      mytasks.component = "show";
     } else await fire("Error", "Unknow error", "error");
   };
 </script>
 
 <nav class="navbar navbar-light topbar">
   <div class="d-flex" style="height: 100%">
-    <a class="brand" class:user={username} href="/">My Tasks</a>
+    <a class="brand" class:user={mytasks.username} href="/">My Tasks</a>
   </div>
-  {#if username}
+  {#if mytasks.username}
     <div class="navbar-nav flex-row">
-      <span class="nav-link">{username}</span>
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <span class="nav-link link" on:click={setting}>Setting</span>
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <span class="nav-link link" on:click={logout}>Logout</span>
+      <span class="nav-link">{mytasks.username}</span>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span class="nav-link link" onclick={setting}>Setting</span>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span class="nav-link link" onclick={logout}>Logout</span>
     </div>
   {:else}
     <div class="navbar-nav flex-row"><span class="nav-link">Log In</span></div>
   {/if}
 </nav>
 {#await promise then _}
-  {#if !username}
-    {#if !$loading}
-      <Login on:load={load} />
+  {#if !mytasks.username}
+    {#if !loading.show}
+      <Login />
     {/if}
   {:else}
     <Sidebar />
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="content"
-      style="padding-left: 250px; opacity: {$loading ? 0.5 : 1}"
-      on:mousedown={() => ($showSidebar = false)}
+      style="padding-left: 250px; opacity: {loading.show ? 0.5 : 1}"
     >
-      <svelte:component this={components[$component]} on:reload={load} />
+      <Content />
     </div>
   {/if}
 {/await}
-<div class={username ? "loading" : "initializing"} hidden={!$loading}>
+<div
+  class={mytasks.username ? "loading" : "initializing"}
+  hidden={!loading.show}
+>
   <div class="sk-wave sk-center">
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
-    <div class="sk-wave-rect" />
+    <div class="sk-wave-rect"></div>
+    <div class="sk-wave-rect"></div>
+    <div class="sk-wave-rect"></div>
+    <div class="sk-wave-rect"></div>
+    <div class="sk-wave-rect"></div>
   </div>
 </div>
 

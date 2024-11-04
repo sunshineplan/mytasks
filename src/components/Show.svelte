@@ -1,61 +1,41 @@
 <script lang="ts">
-  import Cookies from "js-cookie";
-  import { onMount, createEventDispatcher } from "svelte";
-  import Incomplete from "./Incomplete.svelte";
+  import { onMount } from "svelte";
+  import { confirm, fire, loading, pasteText } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
   import Completed from "./Completed.svelte";
-  import { fire, confirm, poll, pasteText } from "../misc";
-  import { list, lists, tasks, init } from "../task";
-  import { loading } from "../stores";
+  import Incomplete from "./Incomplete.svelte";
 
-  const dispatch = createEventDispatcher();
+  let selected = $state("");
+  let editable = $state(false);
+  let showCompleted = $state(false);
+  let composition = $state(false);
 
-  let selected: string;
-  let editable = false;
-  let showCompleted = false;
-  let composition = false;
+  $effect(() => {
+    mytasks.getTasks();
+    editable = false;
+  });
 
-  $: $list, tasks.get(), (editable = false);
-
-  const subscribe = async (signal: AbortSignal) => {
-    const resp = await poll(signal);
-    if (resp.ok) {
-      const last = await resp.text();
-      if (last && Cookies.get("last") != last) {
-        loading.start();
-        await init();
-        $list = $list;
-        loading.end();
-      }
-      await subscribe(signal);
-    } else if (resp.status == 401) {
-      dispatch("reload");
-    } else {
-      await new Promise((sleep) => setTimeout(sleep, 30000));
-      await subscribe(signal);
-    }
-  };
   onMount(() => {
-    const controller = new AbortController();
-    subscribe(controller.signal);
-    return () => controller.abort();
+    mytasks.subscribe(true);
+    return () => mytasks.controller.abort();
   });
 
   const editList = async (list: string) => {
     list = list.trim();
-    if ($list.list != list) return (await lists.edit(list)) == 0;
+    if (mytasks.list.list != list) return (await mytasks.editList(list)) == 0;
     return true;
   };
   const add = async (task: string) => {
     task = task.trim();
-    if (task) if ((await tasks.save(<Task>{ task })) != 0) return;
+    if (task) if ((await mytasks.saveTask({ task } as Task)) != 0) return;
     const selected = document.querySelector(".selected");
     if (selected) selected.remove();
   };
   const edit = async (id: string, task: string) => {
     task = task.trim();
-    const index = $tasks.incomplete.findIndex((task) => task.id === id);
-    if ($tasks.incomplete[index].task != task)
-      await tasks.save(<Task>{ id, task });
+    const index = mytasks.tasks.incomplete.findIndex((task) => task.id === id);
+    if (mytasks.tasks.incomplete[index].task != task)
+      await mytasks.saveTask({ id, task } as Task);
   };
 
   const addTask = async () => {
@@ -108,22 +88,22 @@
       event.preventDefault();
       if (target.textContent) editable = !(await editList(target.textContent));
       else {
-        target.textContent = $list.list;
+        target.textContent = mytasks.list.list;
         editable = false;
       }
     } else if (event.key == "Escape") {
       if (target.textContent) target.textContent = "";
       else {
-        target.textContent = $list.list;
+        target.textContent = mytasks.list.list;
         editable = false;
       }
     }
   };
   const listClick = async () => {
     if (editable) {
-      if ($lists.length == 1)
+      if (mytasks.lists.length == 1)
         await fire("Error", "You must have at least one list!", "error");
-      else if (await confirm("This list")) await lists.delete();
+      else if (await confirm("This list")) await mytasks.deleteList();
     } else {
       editable = true;
       const target = document.querySelector<HTMLElement>("#list")!;
@@ -139,7 +119,7 @@
   };
 
   const handleWindowClick = async (event: MouseEvent) => {
-    if ($loading) return;
+    if (loading.show) return;
     const target = event.target as Element;
     if (
       target.parentNode &&
@@ -165,7 +145,7 @@
       list.textContent = list.textContent!.trim();
       if (list.textContent) editable = !(await editList(list.textContent));
       else {
-        target.textContent = $list.list;
+        target.textContent = mytasks.list.list;
         editable = false;
       }
     }
@@ -173,40 +153,40 @@
 </script>
 
 <svelte:head>
-  <title>{$list.list} - My Tasks</title>
+  <title>{mytasks.list.list} - My Tasks</title>
 </svelte:head>
 
-<svelte:window on:click={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} />
 
 <div style="height: 100%">
   <header style="padding-left: 20px">
     <div style="height: 50px">
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <span
         class="h3"
         id="list"
         class:editable
         contenteditable={editable}
-        on:compositionstart={() => {
+        oncompositionstart={() => {
           composition = true;
         }}
-        on:compositionend={() => {
+        oncompositionend={() => {
           composition = false;
         }}
-        on:keydown={listKeydown}
-        on:paste={pasteText}
+        onkeydown={listKeydown}
+        onpaste={pasteText}
       >
-        {$list.list}
+        {mytasks.list.list}
       </span>
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <span on:click={listClick}>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span onclick={listClick}>
         {#if !editable}
           <i class="icon edit">edit</i>
         {:else}<i class="icon edit">delete</i>{/if}
       </span>
     </div>
-    <button class="btn btn-primary" on:click={addTask}>Add Task</button>
+    <button class="btn btn-primary" onclick={addTask}>Add Task</button>
   </header>
   <Incomplete bind:showCompleted bind:selected />
   <Completed bind:show={showCompleted} />

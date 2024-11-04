@@ -1,11 +1,17 @@
 <script lang="ts">
+  import { confirm } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
   import CompletedTask from "./CompletedTask.svelte";
-  import { confirm } from "../misc";
-  import { list, tasks, lists } from "../task";
 
-  export let show = false;
+  let {
+    show = $bindable(),
+  }: {
+    show?: boolean;
+  } = $props();
 
-  $: index = $lists.findIndex((i) => i.list === $list.list);
+  let index = $derived(
+    mytasks.lists.findIndex((i) => i.list === mytasks.list.list),
+  );
 
   const expand = (event: MouseEvent) => {
     const target = event.target as Element;
@@ -14,31 +20,34 @@
 
   const empty = async () => {
     if (await confirm("All completed tasks"))
-      if ((await tasks.empty()) == 0) show = false;
+      if ((await mytasks.empty()) == 0) show = false;
   };
 </script>
 
 <div style="height: 100%">
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="completed" on:click={expand}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="completed" onclick={expand}>
     <span>
-      Completed ({$lists[index].completed})
+      Completed ({mytasks.lists[index].completed})
     </span>
     <i class="expand">{show ? "expand_more" : "expand_less"}</i>
-    {#if show && $lists[index].completed}
-      <i class="expand delete" on:click={empty}>delete</i>
+    {#if show && mytasks.lists[index].completed}
+      <i class="expand delete" onclick={empty}>delete</i>
     {/if}
   </div>
   {#if show}
     <ul class="list-group list-group-flush" style="height:calc(50% - 85px)">
-      {#each $tasks.completed as task (task.id)}
-        <CompletedTask bind:task />
+      {#each mytasks.tasks.completed as task, i (task.id)}
+        <CompletedTask bind:task={mytasks.tasks.completed[i]} />
       {/each}
-      {#if $tasks.completed.length < $lists[index].completed}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-        <li class="list-group-item" on:click={async () => await tasks.get(15)}>
+      {#if mytasks.tasks.completed.length < mytasks.lists[index].completed}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <li
+          class="list-group-item"
+          onclick={async () => await mytasks.getTasks(15)}
+        >
           <i class="icon">sync</i>
           <span class="load">Load more</span>
         </li>

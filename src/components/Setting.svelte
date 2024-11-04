@@ -1,23 +1,20 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { encrypt, fire, post, valid } from "../misc";
-  import { component } from "../stores";
+  import { encrypt, fire, post, valid } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
 
-  const dispatch = createEventDispatcher();
-
-  let password = "";
-  let password1 = "";
-  let password2 = "";
-  let validated = false;
+  let password = $state("");
+  let password1 = $state("");
+  let password2 = $state("");
+  let validated = $state(false);
 
   const setting = async () => {
     if (valid()) {
       validated = false;
       var pwd: string, p1: string, p2: string;
       if (window.pubkey && window.pubkey.length) {
-        pwd = encrypt(window.pubkey, password) as string;
-        p1 = encrypt(window.pubkey, password1) as string;
-        p2 = encrypt(window.pubkey, password2) as string;
+        pwd = encrypt(window.pubkey, password);
+        p1 = encrypt(window.pubkey, password1);
+        p2 = encrypt(window.pubkey, password2);
       } else {
         pwd = password;
         p1 = password1;
@@ -40,8 +37,8 @@
             "Your password has changed. Please Re-login!",
             "success",
           );
-          dispatch("reload");
-          $component = "show";
+          await mytasks.init();
+          mytasks.component = "show";
         } else {
           await fire("Error", json.message, "error");
           if (json.error == 1) password = "";
@@ -55,7 +52,7 @@
   };
 
   const cancel = () => {
-    $component = "show";
+    mytasks.component = "show";
   };
 
   const handleEscape = (event: KeyboardEvent) => {
@@ -70,10 +67,10 @@
   <title>Setting - My Tasks</title>
 </svelte:head>
 
-<svelte:window on:keydown={handleEscape} />
+<svelte:window onkeydown={handleEscape} />
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div on:keyup={handleEnter}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div onkeyup={handleEnter}>
   <header style="padding-left: 20px">
     <h3>Setting</h3>
     <hr />
@@ -81,7 +78,7 @@
   <div class="form" class:was-validated={validated}>
     <div class="mb-3">
       <label class="form-label" for="password">Current Password</label>
-      <!-- svelte-ignore a11y-autofocus -->
+      <!-- svelte-ignore a11y_autofocus -->
       <input
         class="form-control"
         type="password"
@@ -120,8 +117,8 @@
         Max password length: 20 characters.
       </small>
     </div>
-    <button class="btn btn-primary" on:click={setting}>Change</button>
-    <button class="btn btn-primary" on:click={cancel}>Cancel</button>
+    <button class="btn btn-primary" onclick={setting}>Change</button>
+    <button class="btn btn-primary" onclick={cancel}>Cancel</button>
   </div>
 </div>
 

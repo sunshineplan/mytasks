@@ -1,18 +1,13 @@
 <script lang="ts">
-  import { pasteText } from "../misc";
-  import { list, lists } from "../task";
-  import { component, showSidebar } from "../stores";
+  import { pasteText, showSidebar } from "../misc.svelte";
+  import { mytasks } from "../task.svelte";
 
-  let hover = false;
-
-  const toggle = () => {
-    $showSidebar = !$showSidebar;
-  };
+  let hover = $state(false);
 
   const goto = (list: List) => {
-    if (window.innerWidth <= 900) $showSidebar = false;
-    $list = list;
-    $component = "show";
+    if (window.innerWidth <= 900) showSidebar.close();
+    mytasks.list = list;
+    mytasks.component = "show";
     const ul = document.querySelector("#tasks");
     if (ul) ul.scrollTop = 0;
   };
@@ -25,12 +20,12 @@
       incomplete: 0,
       completed: 0,
     };
-    await lists.add(newList);
+    await mytasks.addList(newList);
     goto(newList);
   };
 
   const addList = async () => {
-    if (window.innerWidth <= 900) $showSidebar = false;
+    if (window.innerWidth <= 900) showSidebar.close();
     const newList = document.querySelector<HTMLElement>(".new");
     if (newList) await add(newList.innerText);
     const ul = document.querySelector("ul.navbar-nav")!;
@@ -72,13 +67,15 @@
     if (event.key == "ArrowUp" || event.key == "ArrowDown") {
       const newList = document.querySelector(".new");
       if (newList) newList.remove();
-      const len = $lists.length;
-      const index = $lists.findIndex((list) => list.list === $list.list);
-      if ($component === "show")
+      const len = mytasks.lists.length;
+      const index = mytasks.lists.findIndex(
+        (list) => list.list === mytasks.list.list,
+      );
+      if (mytasks.component === "show")
         if (event.key == "ArrowUp") {
-          if (index > 0) goto($lists[index - 1]);
+          if (index > 0) goto(mytasks.lists[index - 1]);
         } else if (event.key == "ArrowDown")
-          if (index < len - 1) goto($lists[index + 1]);
+          if (index < len - 1) goto(mytasks.lists[index + 1]);
     }
   };
   const handleClick = async (event: MouseEvent) => {
@@ -98,15 +95,15 @@
   };
 </script>
 
-<svelte:window on:keydown={handleKeydown} on:click={handleClick} />
+<svelte:window onkeydown={handleKeydown} onclick={handleClick} />
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <span
   class="toggle"
-  on:click={toggle}
-  on:mouseenter={() => (hover = true)}
-  on:mouseleave={() => (hover = false)}
+  onclick={() => showSidebar.toggle()}
+  onmouseenter={() => (hover = true)}
+  onmouseleave={() => (hover = false)}
 >
   <svg viewBox="0 0 70 70" width="40" height="30">
     {#each [10, 30, 50] as y}
@@ -114,17 +111,21 @@
     {/each}
   </svg>
 </span>
-<nav class="nav flex-column navbar-light sidebar" class:show={$showSidebar}>
+<nav
+  class="nav flex-column navbar-light sidebar"
+  class:show={showSidebar.status}
+>
   <div class="list-menu">
-    <button class="btn btn-primary btn-sm" on:click={addList}>Add List</button>
+    <button class="btn btn-primary btn-sm" onclick={addList}>Add List</button>
     <ul class="navbar-nav" id="lists">
-      {#each $lists as l (l.list)}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+      {#each mytasks.lists as l (l.list)}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <li
           class="nav-link list"
-          class:active={$list.list === l.list && $component === "show"}
-          on:click={() => goto(l)}
+          class:active={mytasks.list.list === l.list &&
+            mytasks.component === "show"}
+          onclick={() => goto(l)}
         >
           {l.list} ({l.incomplete})
         </li>

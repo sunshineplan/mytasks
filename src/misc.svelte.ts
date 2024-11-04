@@ -1,11 +1,27 @@
 import JSEncrypt from 'jsencrypt'
 import Swal from 'sweetalert2'
-import { loading } from './stores'
+
+class Toggler {
+  status = $state(false)
+  toggle() { this.status = !this.status }
+  close() { this.status = false }
+}
+export const showSidebar = new Toggler
+
+class Loading {
+  #n = $state(0)
+  show = $derived(this.#n > 0)
+  start() { this.#n += 1 }
+  end() { this.#n -= 1 }
+}
+export const loading = new Loading
 
 export const encrypt = (pubkey: string, password: string) => {
   const encrypt = new JSEncrypt()
   encrypt.setPublicKey(pubkey)
-  return encrypt.encrypt(password)
+  const s = encrypt.encrypt(password)
+  if (s === false) return password
+  return s
 }
 
 export const fire = (
@@ -42,22 +58,6 @@ export const valid = () => {
   Array.from(document.querySelectorAll('input'))
     .forEach(i => { if (!i.checkValidity()) result = false })
   return result
-}
-
-export const poll = async (signal: AbortSignal) => {
-  let resp: Response
-  try {
-    resp = await fetch('/poll', { signal })
-  } catch (e) {
-    let message = ''
-    if (typeof e === 'string') {
-      message = e
-    } else if (e instanceof Error) {
-      message = e.message
-    }
-    resp = new Response(message, { status: 500 })
-  }
-  return resp
 }
 
 export const post = async (url: string, data?: object, universal?: boolean) => {
