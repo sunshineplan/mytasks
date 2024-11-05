@@ -280,19 +280,28 @@ class MyTasks {
     } else await fire('Fatal', await resp.text(), 'error')
     return 1
   }
-  async subscribe(signal: AbortSignal) {
-    const resp = await poll(signal)
+  async subscribe(reset?: boolean) {
+    if (reset)
+      this.controller = new AbortController()
+    let resp: Response
+    try {
+      resp = await fetch('/poll', { signal: this.controller.signal })
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      console.error(e)
+      resp = new Response(null, { status: 500 })
+    }
     if (resp.ok) {
       const last = await resp.text()
       if (last && Cookies.get('last') != last) {
-        await mytasks.init()
+        await this.init()
       }
-      await this.subscribe(signal)
+      await this.subscribe()
     } else if (resp.status == 401) {
-      await mytasks.init()
+      await this.init()
     } else {
       await new Promise((sleep) => setTimeout(sleep, 30000))
-      await this.subscribe(signal)
+      await this.subscribe()
     }
   };
 }
