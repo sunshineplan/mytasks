@@ -7,13 +7,13 @@
   let rememberme = $state(
     localStorage.getItem("rememberme") == "true" ? true : false,
   );
+  let usernameInput: HTMLInputElement;
+  let passwordInput: HTMLInputElement;
 
   const login = async () => {
-    if (!document.querySelector<HTMLInputElement>("#username")!.checkValidity())
+    if (!usernameInput.checkValidity())
       await fire("Error", "Username cannot be empty.", "error");
-    else if (
-      !document.querySelector<HTMLInputElement>("#password")!.checkValidity()
-    )
+    else if (!passwordInput.checkValidity())
       await fire("Error", "Password cannot be empty.", "error");
     else {
       var pwd: string;
@@ -22,11 +22,7 @@
       else pwd = password;
       const resp = await post(
         window.universal + "/login",
-        {
-          username,
-          password: pwd,
-          rememberme,
-        },
+        { username, password: pwd, rememberme },
         true,
       );
       if (resp.ok) {
@@ -65,6 +61,7 @@
       <!-- svelte-ignore a11y_autofocus -->
       <input
         class="form-control"
+        bind:this={usernameInput}
         bind:value={username}
         id="username"
         maxlength="20"
@@ -77,6 +74,7 @@
       <label class="form-label" for="password">Password</label>
       <input
         class="form-control"
+        bind:this={passwordInput}
         type="password"
         bind:value={password}
         id="password"

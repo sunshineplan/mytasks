@@ -3,60 +3,39 @@
   import { mytasks } from "../task.svelte";
 
   let hover = $state(false);
+  let composition = $state(false);
+  let toggle: HTMLElement;
+  let sidebar: HTMLElement;
+  let addListButton: HTMLElement;
+  let newListElement: HTMLElement;
+  let showNewList = $state(false);
+  let newList = $state("");
+
+  $effect(() => {
+    if (showNewList) newListElement.focus();
+  });
 
   const goto = (list: List) => {
-    if (window.innerWidth <= 900) showSidebar.close();
+    showSidebar.close();
     mytasks.list = list;
     mytasks.component = "show";
-    const ul = document.querySelector("#tasks");
-    if (ul) ul.scrollTop = 0;
   };
 
-  const add = async (list: string) => {
-    list = list.trim();
-    document.querySelector(".new")?.remove();
-    const newList: List = {
-      list,
-      incomplete: 0,
-      completed: 0,
-    };
-    await mytasks.addList(newList);
-    goto(newList);
+  const add = async () => {
+    newList = newList.trim();
+    if (newList) {
+      const list: List = { list: newList, incomplete: 0, completed: 0 };
+      await mytasks.addList(list);
+      goto(list);
+    }
   };
 
   const addList = async () => {
-    if (window.innerWidth <= 900) showSidebar.close();
-    const newList = document.querySelector<HTMLElement>(".new");
-    if (newList) await add(newList.innerText);
-    const ul = document.querySelector("ul.navbar-nav")!;
-    const li = document.createElement("li");
-    li.classList.add("nav-link", "new");
-    ul.appendChild(li);
-    li.addEventListener("paste", pasteText);
-    let composition = false;
-    li.addEventListener("compositionstart", () => {
-      composition = true;
-    });
-    li.addEventListener("compositionend", () => {
-      composition = false;
-    });
-    li.addEventListener("keydown", async (event) => {
-      if (composition) return;
-      const target = event.target as Element;
-      const list = target.textContent!.trim();
-      if (event.key == "Enter") {
-        event.preventDefault();
-        if (list) await add(list);
-        else target.remove();
-      } else if (event.key == "Escape") {
-        if (list) target.textContent = "";
-        else target.remove();
-      }
-    });
-    li.setAttribute("contenteditable", "true");
-    li.focus();
+    if (showNewList) await add();
+    else showNewList = true;
+    newList = "";
     const range = document.createRange();
-    range.selectNodeContents(li);
+    range.selectNodeContents(newListElement);
     range.collapse(false);
     const sel = window.getSelection()!;
     sel.removeAllRanges();
@@ -65,8 +44,10 @@
 
   const handleKeydown = async (event: KeyboardEvent) => {
     if (event.key == "ArrowUp" || event.key == "ArrowDown") {
-      const newList = document.querySelector(".new");
-      if (newList) newList.remove();
+      if (showNewList) {
+        showNewList = false;
+        newList = "";
+      }
       const len = mytasks.lists.length;
       const index = mytasks.lists.findIndex(
         (list) => list.list === mytasks.list.list,
@@ -81,17 +62,21 @@
   const handleClick = async (event: MouseEvent) => {
     const target = event.target as Element;
     if (
-      !target.classList.contains("new") &&
-      !target.classList.contains("swal2-confirm") &&
-      target.textContent !== "Add List"
+      showNewList &&
+      !addListButton.contains(target) &&
+      !newListElement.contains(target) &&
+      !target.classList.contains("swal2-confirm")
     ) {
-      const newList = document.querySelector(".new");
-      if (newList) {
-        const list = newList.textContent!.trim();
-        if (list) await add(list);
-        else newList.remove();
-      }
+      await add();
+      showNewList = false;
+      newList = "";
     }
+    if (
+      showSidebar.status &&
+      !toggle.contains(target) &&
+      !sidebar.contains(target)
+    )
+      showSidebar.close();
   };
 </script>
 
@@ -101,6 +86,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <span
   class="toggle"
+  bind:this={toggle}
   onclick={() => showSidebar.toggle()}
   onmouseenter={() => (hover = true)}
   onmouseleave={() => (hover = false)}
@@ -114,9 +100,14 @@
 <nav
   class="nav flex-column navbar-light sidebar"
   class:show={showSidebar.status}
+  bind:this={sidebar}
 >
   <div class="list-menu">
-    <button class="btn btn-primary btn-sm" onclick={addList}>Add List</button>
+    <button
+      class="btn btn-primary btn-sm"
+      bind:this={addListButton}
+      onclick={addList}>Add List</button
+    >
     <ul class="navbar-nav" id="lists">
       {#each mytasks.lists as l (l.list)}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -130,6 +121,29 @@
           {l.list} ({l.incomplete})
         </li>
       {/each}
+      <li
+        class="nav-link new"
+        style:display={showNewList ? "" : "none"}
+        bind:this={newListElement}
+        bind:textContent={newList}
+        contenteditable
+        onpaste={pasteText}
+        oncompositionstart={() => (composition = true)}
+        oncompositionend={() => (composition = false)}
+        onkeydown={async (event) => {
+          if (composition) return;
+          if (event.key == "Enter") {
+            event.preventDefault();
+            newList = newList.trim();
+            if (newList) await add();
+            else newList = "";
+            showNewList = false;
+          } else if (event.key == "Escape") {
+            newList = "";
+            showNewList = false;
+          }
+        }}
+      ></li>
     </ul>
   </div>
 </nav>

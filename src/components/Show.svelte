@@ -1,16 +1,32 @@
 <script lang="ts">
+  import Sortable from "sortablejs";
   import { onMount } from "svelte";
   import { confirm, fire, loading, pasteText } from "../misc.svelte";
   import { mytasks } from "../task.svelte";
   import Completed from "./Completed.svelte";
-  import Incomplete from "./Incomplete.svelte";
+  import IncompleteTask from "./IncompleteTask.svelte";
 
+  let list = $state(mytasks.list.list);
   let selected = $state("");
   let editable = $state(false);
   let showCompleted = $state(false);
   let composition = $state(false);
+  let showNewTask = $state(false);
+  let newTask = $state("");
+  let listElement: HTMLElement;
+  let listEditIcon: HTMLElement;
+  let addTaskButton: HTMLElement;
+  let tasks: HTMLElement;
+  let newTaskElement: HTMLElement;
 
   $effect(() => {
+    if (editable) {
+      listElement.focus();
+      return;
+    } else if (showNewTask) {
+      newTaskElement.focus();
+      return;
+    }
     mytasks.getTasks();
     editable = false;
   });
@@ -20,60 +36,47 @@
     return () => mytasks.controller.abort();
   });
 
-  const editList = async (list: string) => {
+  onMount(() => {
+    const sortable = new Sortable(tasks, {
+      animation: 150,
+      delay: 200,
+      swapThreshold: 0.5,
+      onUpdate: async (e) => {
+        await mytasks.swapTask(
+          mytasks.tasks.incomplete[e.oldIndex!],
+          mytasks.tasks.incomplete[e.newIndex!],
+        );
+      },
+    });
+    return () => sortable.destroy();
+  });
+
+  const editList = async () => {
     list = list.trim();
     if (mytasks.list.list != list) return (await mytasks.editList(list)) == 0;
     return true;
   };
-  const add = async (task: string) => {
-    task = task.trim();
-    if (task) if ((await mytasks.saveTask({ task } as Task)) != 0) return;
-    const selected = document.querySelector(".selected");
-    if (selected) selected.remove();
+  const add = async () => {
+    newTask = newTask.trim();
+    if (newTask)
+      if ((await mytasks.saveTask({ task: newTask } as Task)) != 0) return;
+    newTask = "";
+    showNewTask = false;
   };
   const edit = async (id: string, task: string) => {
     task = task.trim();
     const index = mytasks.tasks.incomplete.findIndex((task) => task.id === id);
     if (mytasks.tasks.incomplete[index].task != task)
       await mytasks.saveTask({ id, task } as Task);
+    selected = "";
   };
 
   const addTask = async () => {
-    const task = document.querySelector(".selected>.task");
-    if (!selected && task) {
-      task.textContent = task.textContent!.trim();
-      await add(task.textContent);
-    }
-    selected = "";
-    const ul = document.querySelector("#tasks")!;
-    const li = document.createElement("li");
-    li.classList.add("list-group-item", "selected");
-    const span = document.createElement("span");
-    span.classList.add("task");
-    span.style.paddingLeft = "48px";
-    li.appendChild(span);
-    li.addEventListener("paste", pasteText);
-    let composition = false;
-    li.addEventListener("compositionstart", () => {
-      composition = true;
-    });
-    li.addEventListener("compositionend", () => {
-      composition = false;
-    });
-    li.addEventListener("keydown", async (event) => {
-      if (composition) return;
-      if (event.key == "Enter" || event.key == "Escape") {
-        event.preventDefault();
-        const target = event.target as Element;
-        target.textContent = target.textContent!.trim();
-        await add(target.textContent);
-      }
-    });
-    ul.insertBefore(li, ul.childNodes[0]);
-    span.setAttribute("contenteditable", "true");
-    span.focus();
+    if (showNewTask) await add();
+    newTask = "";
+    showNewTask = true;
     const range = document.createRange();
-    range.selectNodeContents(span);
+    range.selectNodeContents(newTaskElement);
     range.collapse(false);
     const sel = window.getSelection()!;
     sel.removeAllRanges();
@@ -82,19 +85,18 @@
 
   const listKeydown = async (event: KeyboardEvent) => {
     if (composition) return;
-    const target = event.target as Element;
-    target.textContent = target.textContent!.trim();
+    list = list.trim();
     if (event.key == "Enter") {
       event.preventDefault();
-      if (target.textContent) editable = !(await editList(target.textContent));
+      if (list) editable = !(await editList());
       else {
-        target.textContent = mytasks.list.list;
+        list = mytasks.list.list;
         editable = false;
       }
     } else if (event.key == "Escape") {
-      if (target.textContent) target.textContent = "";
+      if (list) list = "";
       else {
-        target.textContent = mytasks.list.list;
+        list = mytasks.list.list;
         editable = false;
       }
     }
@@ -106,11 +108,8 @@
       else if (await confirm("This list")) await mytasks.deleteList();
     } else {
       editable = true;
-      const target = document.querySelector<HTMLElement>("#list")!;
-      target.setAttribute("contenteditable", "true");
-      target.focus();
       const range = document.createRange();
-      range.selectNodeContents(target);
+      range.selectNodeContents(listElement);
       range.collapse(false);
       const sel = window.getSelection()!;
       sel.removeAllRanges();
@@ -122,32 +121,28 @@
     if (loading.show) return;
     const target = event.target as Element;
     if (
-      target.parentNode &&
-      !(target.parentNode as Element).classList.contains("selected") &&
-      target.textContent !== "Add Task"
+      editable &&
+      !listElement.contains(target) &&
+      !listEditIcon.contains(target) &&
+      !target.classList.contains("swal2-confirm")
     ) {
-      const id = selected;
-      const task = document.querySelector(".selected>.task");
-      if (task) {
-        task.textContent = task.textContent!.trim();
-        if (id) await edit(id, task.textContent);
-        else await add(task.textContent);
-      }
-      selected = "";
-    }
-    if (
-      target.id !== "list" &&
-      !target.classList.contains("edit") &&
-      !target.classList.contains("swal2-confirm") &&
-      editable
-    ) {
-      const list = document.querySelector("#list")!;
-      list.textContent = list.textContent!.trim();
-      if (list.textContent) editable = !(await editList(list.textContent));
+      list = list.trim();
+      if (list) editable = !(await editList());
       else {
-        target.textContent = mytasks.list.list;
+        list = mytasks.list.list;
         editable = false;
       }
+    }
+    if (
+      showNewTask &&
+      !newTaskElement.contains(target) &&
+      !addTaskButton.contains(target)
+    )
+      await add();
+    if (selected) {
+      const task = document.querySelector(".selected>.task")!;
+      task.textContent = task.textContent!.trim();
+      await edit(selected, task.textContent);
     }
   };
 </script>
@@ -164,31 +159,59 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <span
         class="h3"
+        bind:this={listElement}
         id="list"
         class:editable
         contenteditable={editable}
-        oncompositionstart={() => {
-          composition = true;
-        }}
-        oncompositionend={() => {
-          composition = false;
-        }}
+        oncompositionstart={() => (composition = true)}
+        oncompositionend={() => (composition = false)}
         onkeydown={listKeydown}
         onpaste={pasteText}
       >
-        {mytasks.list.list}
+        {list}
       </span>
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <span onclick={listClick}>
-        {#if !editable}
-          <i class="icon edit">edit</i>
-        {:else}<i class="icon edit">delete</i>{/if}
-      </span>
+      <i class="icon edit" bind:this={listEditIcon} onclick={listClick}>
+        {editable ? "delete" : "edit"}
+      </i>
     </div>
-    <button class="btn btn-primary" onclick={addTask}>Add Task</button>
+    <button class="btn btn-primary" bind:this={addTaskButton} onclick={addTask}>
+      Add Task
+    </button>
   </header>
-  <Incomplete bind:showCompleted bind:selected />
+  <ul
+    class="list-group list-group-flush"
+    bind:this={tasks}
+    style={showCompleted
+      ? "height: calc(50% - 85px)"
+      : "height: calc(100% - 170px)"}
+  >
+    <li class="list-group-item" class:selected={showNewTask}>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span
+        class="task"
+        style="padding-left: 48px"
+        style:display={showNewTask ? "" : "none"}
+        bind:this={newTaskElement}
+        bind:textContent={newTask}
+        contenteditable
+        oncompositionstart={() => (composition = true)}
+        oncompositionend={() => (composition = false)}
+        onpaste={pasteText}
+        onkeydown={async (event) => {
+          if (composition) return;
+          if (event.key == "Enter" || event.key == "Escape") {
+            event.preventDefault();
+            await add();
+          }
+        }}
+      ></span>
+    </li>
+    {#each mytasks.tasks.incomplete as task, i (task.id)}
+      <IncompleteTask bind:selected bind:task={mytasks.tasks.incomplete[i]} />
+    {/each}
+  </ul>
   <Completed bind:show={showCompleted} />
 </div>
 
@@ -216,5 +239,10 @@
     display: inline-block;
     min-width: 10px;
     padding-right: 1rem;
+  }
+
+  ul {
+    cursor: default;
+    overflow-y: auto;
   }
 </style>

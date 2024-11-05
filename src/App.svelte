@@ -5,7 +5,7 @@
   import Show from "./components/Show.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import { fire, post } from "./misc.svelte";
-  import { loading, showSidebar } from "./misc.svelte";
+  import { loading } from "./misc.svelte";
   import { mytasks } from "./task.svelte";
 
   const promise = mytasks.init();
@@ -18,7 +18,6 @@
   const Content = $derived(components[mytasks.component]);
 
   const setting = () => {
-    if (window.innerWidth <= 900) showSidebar.close();
     mytasks.component = "setting";
   };
 

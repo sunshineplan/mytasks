@@ -12,6 +12,21 @@
 
   let hover = $state(false);
   let composition = $state(false);
+  let taskElement: HTMLElement;
+  let complete: HTMLElement;
+  let edit: HTMLElement;
+
+  $effect(() => {
+    if (selected == task.id) {
+      const range = document.createRange();
+      range.selectNodeContents(taskElement);
+      range.collapse(false);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(range);
+      taskElement.focus();
+    }
+  });
 
   const del = async () => {
     if (await confirm("This task")) await mytasks.deleteTask(task);
@@ -21,9 +36,8 @@
     if (composition) return;
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
-      const target = event.target as Element;
-      target.textContent = target.textContent!.trim();
-      await mytasks.saveTask({ id: task.id, task: target.textContent } as Task);
+      task.task = task.task.trim();
+      await mytasks.saveTask({ id: task.id, task: task.task } as Task);
       selected = "";
     }
   };
@@ -31,24 +45,17 @@
     let target = event.target as HTMLElement;
     if (
       selected !== task.id &&
-      !target.classList.contains("complete") &&
-      !target.classList.contains("delete")
+      !complete.contains(target) &&
+      !edit.contains(target)
     ) {
-      target = target.parentNode!.querySelector(".task")!;
-      target.setAttribute("contenteditable", "true");
-      target.focus();
-      const range = document.createRange();
-      range.selectNodeContents(target);
-      range.collapse(false);
-      const sel = window.getSelection()!;
-      sel.removeAllRanges();
-      sel.addRange(range);
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
-        selectedTask.textContent = selectedTask.textContent!.trim();
-        let task = { task: selectedTask.textContent } as Task;
-        if (selected) task.id = selected;
-        await mytasks.saveTask(task);
+        selectedTask.textContent = selectedTask.textContent?.trim() || "";
+        if (selectedTask.textContent) {
+          let task = { task: selectedTask.textContent } as Task;
+          if (selected) task.id = selected;
+          await mytasks.saveTask(task);
+        }
       }
       selected = task.id;
     }
@@ -65,29 +72,33 @@
   onclick={handleClick}
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <i class="icon complete" onclick={async () => mytasks.completeTask(task)}></i>
+  <i
+    class="icon complete"
+    bind:this={complete}
+    onclick={async () => mytasks.completeTask(task)}
+  ></i>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
     class="task"
+    bind:this={taskElement}
     contenteditable={task.id === selected}
-    oncompositionstart={() => {
-      composition = true;
-    }}
-    oncompositionend={() => {
-      composition = false;
-    }}
+    oncompositionstart={() => (composition = true)}
+    oncompositionend={() => (composition = false)}
     onkeydown={handleKeydown}
     onpaste={pasteText}
   >
     {task.task}
   </span>
   <span class="created">{new Date(task.created).toLocaleDateString()}</span>
-  {#if task.id === selected}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <i class="icon delete" onclick={del}>delete</i>
-  {:else if hover}
-    <i class="icon">edit</i>
-  {/if}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <i
+    bind:this={edit}
+    class:icon={hover}
+    class:delete={task.id === selected}
+    style:display={hover ? "" : "none"}
+    onclick={task.id === selected ? del : null}
+    >{hover ? (task.id === selected ? "delete" : "edit") : ""}</i
+  >
 </li>
 
 <style>
