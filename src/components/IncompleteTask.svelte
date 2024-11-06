@@ -39,8 +39,11 @@
     if (composition) return;
     if (event.key == "Enter" || event.key == "Escape") {
       event.preventDefault();
-      task.task = task.task.trim();
-      await mytasks.saveTask({ id: task.id, task: task.task } as Task);
+      taskElement.textContent = taskElement.textContent?.trim() || "";
+      await mytasks.saveTask({
+        id: task.id,
+        task: taskElement.textContent,
+      } as Task);
       selected = "";
     }
   };
