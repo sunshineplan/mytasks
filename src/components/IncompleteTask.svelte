@@ -6,7 +6,7 @@
     selected = $bindable(),
     task = $bindable(),
   }: {
-    selected?: string;
+    selected: string;
     task: Task;
   } = $props();
 
@@ -16,8 +16,10 @@
   let complete: HTMLElement;
   let edit: HTMLElement;
 
+  let editable = $derived(selected === task.id);
+
   $effect(() => {
-    if (selected == task.id) {
+    if (editable) {
       const range = document.createRange();
       range.selectNodeContents(taskElement);
       range.collapse(false);
@@ -43,19 +45,15 @@
   };
   const handleClick = async (event: MouseEvent) => {
     let target = event.target as HTMLElement;
-    if (
-      selected !== task.id &&
-      !complete.contains(target) &&
-      !edit.contains(target)
-    ) {
+    if (!editable && !complete.contains(target)) {
       const selectedTask = document.querySelector(".selected>.task");
       if (selectedTask) {
         selectedTask.textContent = selectedTask.textContent?.trim() || "";
-        if (selectedTask.textContent) {
-          let task = { task: selectedTask.textContent } as Task;
-          if (selected) task.id = selected;
-          await mytasks.saveTask(task);
-        }
+        if (selectedTask.textContent)
+          await mytasks.saveTask({
+            id: selected,
+            task: selectedTask.textContent,
+          } as Task);
       }
       selected = task.id;
     }
@@ -66,7 +64,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <li
   class="list-group-item"
-  class:selected={task.id === selected}
+  class:selected={editable}
   onmouseenter={() => (hover = true)}
   onmouseleave={() => (hover = false)}
   onclick={handleClick}
@@ -81,7 +79,7 @@
   <span
     class="task"
     bind:this={taskElement}
-    contenteditable={task.id === selected}
+    contenteditable={editable}
     oncompositionstart={() => (composition = true)}
     oncompositionend={() => (composition = false)}
     onkeydown={handleKeydown}
@@ -94,10 +92,10 @@
   <i
     bind:this={edit}
     class:icon={hover}
-    class:delete={task.id === selected}
+    class:delete={editable}
     style:display={hover ? "" : "none"}
-    onclick={task.id === selected ? del : null}
-    >{hover ? (task.id === selected ? "delete" : "edit") : ""}</i
+    onclick={editable ? del : null}
+    >{editable ? "delete" : hover ? "edit" : ""}</i
   >
 </li>
 

@@ -84,6 +84,9 @@ export const post = async (url: string, data?: object, universal?: boolean) => {
   if (resp.status == 401) {
     await fire('Error', 'Login status has changed. Please Re-login!', 'error')
     window.location.href = '/'
+  } else if (resp.status == 409) {
+    await fire('Error', 'Data has changed.', 'error')
+    window.location.href = '/'
   }
   return resp
 }

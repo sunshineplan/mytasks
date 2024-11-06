@@ -6,7 +6,7 @@
   let {
     show = $bindable(),
   }: {
-    show?: boolean;
+    show: boolean;
   } = $props();
 
   let index = $derived(

@@ -40,7 +40,7 @@ class MyTasks {
     if (resp.ok) {
       const username = await resp.text()
       if (username) {
-        await this.getLists()
+        await this.#getLists()
         await this.getTasks()
         this.username = username
       } else await this.reset()
@@ -49,7 +49,7 @@ class MyTasks {
       await this.init()
     } else await this.reset()
   }
-  async getLists() {
+  async #getLists() {
     await listTable.filter(i => !i.completed && !i.incomplete).delete()
     const array = await listTable.toArray()
     if (array.length) this.lists = array
@@ -70,6 +70,7 @@ class MyTasks {
     else this.lists = [...this.lists, list]
   }
   async editList(name: string) {
+    this.controller.abort()
     const resp = await post('/list/edit', { old: this.list.list, new: name })
     let msg = ''
     if (resp.ok) {
@@ -79,21 +80,25 @@ class MyTasks {
         await taskTable.where('list').equals(this.list.list).modify({ list: name })
         this.lists = await listTable.toArray()
         this.list.list = name
+        this.subscribe(true)
         return 0
       } else msg = res.message
     } else msg = await resp.text()
     await fire('Fatal', msg, 'error')
+    this.subscribe(true)
     return 1
   }
   async deleteList() {
+    this.controller.abort()
     const resp = await post('/list/delete', { list: this.list.list })
     if (resp.ok) {
       await listTable.where('list').equals(this.list.list).delete()
       await taskTable.where('list').equals(this.list.list).delete()
       this.lists = await listTable.toArray()
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
   }
-  async loadTasks() {
+  async #loadTasks() {
     if (!this.list.list) {
       if (this.lists.length)
         this.list = this.lists[0]
@@ -107,7 +112,7 @@ class MyTasks {
     else this.tasks = { list: this.list.list, incomplete: [], completed: [] }
   }
   async getTasks(more?: number, goal?: number) { // need check
-    await this.loadTasks()
+    await this.#loadTasks()
     if (this.list.list) {
       const total = this.list.completed
       const len = this.tasks.completed.length
@@ -117,10 +122,10 @@ class MyTasks {
       if (len >= goal) return
       if (more) await this.moreCompleted(len)
     }
-    if (!more) await this.fetchTasks()
+    if (!more) await this.#fetchTasks()
     await this.getTasks(more, goal)
   }
-  async fetchTasks() {
+  async #fetchTasks() {
     const resp = await post('/task/get', { list: this.list.list })
     if (resp.ok) {
       const res = await resp.json()
@@ -138,6 +143,7 @@ class MyTasks {
     } else await fire('Fatal', await resp.text(), 'error')
   }
   async saveTask(task: Task) {
+    this.controller.abort()
     let url = '/task/add'
     if (task.id) url = '/task/edit/' + task.id, task
     else task.list = this.list.list
@@ -169,12 +175,15 @@ class MyTasks {
         await this.getTasks()
       } else {
         await fire('Error', res.message, 'error')
+        this.subscribe(true)
         return <number>res.error
       }
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
     return 0
   }
   async completeTask(task: Task) {
+    this.controller.abort()
     const resp = await post('/task/complete/' + task.id)
     if (resp.ok) {
       const res = await resp.json()
@@ -202,8 +211,10 @@ class MyTasks {
         await this.getTasks()
       } else await fire('Error', 'Error', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
   }
   async revertTask(task: Task) {
+    this.controller.abort()
     const resp = await post('/completed/revert/' + task.id)
     if (resp.ok) {
       const res = await resp.json()
@@ -231,8 +242,10 @@ class MyTasks {
         await this.getTasks()
       } else await fire('Error', 'Error', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
   }
   async deleteTask(task: Task, done?: boolean) {
+    this.controller.abort()
     let url = '/task/delete/'
     if (done) url = '/completed/delete/'
     const resp = await post(url + task.id)
@@ -252,8 +265,10 @@ class MyTasks {
       this.lists = await listTable.toArray()
       await this.getTasks()
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
   }
   async swapTask(a: Task, b: Task) {
+    this.controller.abort()
     const resp = await post('/task/reorder', { list: this.list.list, orig: a.id, dest: b.id })
     if (resp.ok) {
       if ((await resp.text()) == '1') {
@@ -267,8 +282,10 @@ class MyTasks {
         })
       } else await fire('Fatal', 'Failed to reorder.', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
   }
   async empty() {
+    this.controller.abort()
     const resp = await post('/completed/empty', { list: this.list.list })
     if (resp.ok) {
       await taskTable.where('list').equals(this.list.list).modify({ completed: [] })
@@ -276,8 +293,10 @@ class MyTasks {
       await listTable.where('list').equals(this.list.list).modify(this.list)
       this.lists = await listTable.toArray()
       await this.getTasks()
+      this.subscribe(true)
       return 0
     } else await fire('Fatal', await resp.text(), 'error')
+    this.subscribe(true)
     return 1
   }
   async subscribe(reset?: boolean) {

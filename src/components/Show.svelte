@@ -139,7 +139,7 @@
       !addTaskButton.contains(target)
     )
       await add();
-    if (selected) {
+    if (selected && !tasks.contains(target)) {
       const task = document.querySelector(".selected>.task")!;
       task.textContent = task.textContent!.trim();
       await edit(selected, task.textContent);
