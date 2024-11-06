@@ -143,17 +143,16 @@ class MyTasks {
     } else await fire('Fatal', await resp.text(), 'error')
   }
   async saveTask(task: Task) {
-    this.controller.abort()
     let url = '/task/add'
     if (task.id) {
       const old = this.tasks.incomplete.find(i => i.id == task.id)
       if (old!.task == task.task) {
-        this.subscribe(true)
         return 0
       }
       url = '/task/edit/' + task.id
     }
     else task.list = this.list.list
+    this.controller.abort()
     const resp = await post(url, task)
     if (resp.ok) {
       const res = await resp.json()
@@ -252,9 +251,9 @@ class MyTasks {
     this.subscribe(true)
   }
   async deleteTask(task: Task, done?: boolean) {
-    this.controller.abort()
     let url = '/task/delete/'
     if (done) url = '/completed/delete/'
+    this.controller.abort()
     const resp = await post(url + task.id)
     if (resp.ok) {
       if (done) {
