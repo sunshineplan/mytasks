@@ -145,7 +145,14 @@ class MyTasks {
   async saveTask(task: Task) {
     this.controller.abort()
     let url = '/task/add'
-    if (task.id) url = '/task/edit/' + task.id, task
+    if (task.id) {
+      const old = this.tasks.incomplete.find(i => i.id == task.id)
+      if (old!.task == task.task) {
+        this.subscribe(true)
+        return 0
+      }
+      url = '/task/edit/' + task.id
+    }
     else task.list = this.list.list
     const resp = await post(url, task)
     if (resp.ok) {
