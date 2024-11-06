@@ -6,7 +6,6 @@
   import Completed from "./Completed.svelte";
   import IncompleteTask from "./IncompleteTask.svelte";
 
-  let list = $state(mytasks.list.list);
   let selected = $state("");
   let editable = $state(false);
   let showCompleted = $state(false);
@@ -52,9 +51,15 @@
   });
 
   const editList = async () => {
-    list = list.trim();
-    if (mytasks.list.list != list) return (await mytasks.editList(list)) == 0;
-    return true;
+    listElement.textContent = listElement.textContent?.trim() || "";
+    if (listElement.textContent) {
+      if (listElement.textContent != mytasks.list.list)
+        editable = (await mytasks.editList(listElement.textContent)) != 0;
+      else editable = false;
+    } else {
+      listElement.textContent = mytasks.list.list;
+      editable = false;
+    }
   };
   const add = async () => {
     newTask = newTask.trim();
@@ -85,18 +90,14 @@
 
   const listKeydown = async (event: KeyboardEvent) => {
     if (composition) return;
-    list = list.trim();
     if (event.key == "Enter") {
       event.preventDefault();
-      if (list) editable = !(await editList());
-      else {
-        list = mytasks.list.list;
-        editable = false;
-      }
+      await editList();
     } else if (event.key == "Escape") {
-      if (list) list = "";
+      listElement.textContent = listElement.textContent?.trim() || "";
+      if (listElement.textContent) listElement.textContent = "";
       else {
-        list = mytasks.list.list;
+        listElement.textContent = mytasks.list.list;
         editable = false;
       }
     }
@@ -125,14 +126,8 @@
       !listElement.contains(target) &&
       !listEditIcon.contains(target) &&
       !target.classList.contains("swal2-confirm")
-    ) {
-      list = list.trim();
-      if (list) editable = !(await editList());
-      else {
-        list = mytasks.list.list;
-        editable = false;
-      }
-    }
+    )
+      await editList();
     if (
       showNewTask &&
       !newTaskElement.contains(target) &&
@@ -168,7 +163,7 @@
         onkeydown={listKeydown}
         onpaste={pasteText}
       >
-        {list}
+        {mytasks.list.list}
       </span>
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->

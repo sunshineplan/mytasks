@@ -17,6 +17,7 @@
   let edit: HTMLElement;
 
   let editable = $derived(selected === task.id);
+  let icon = $derived(editable || hover);
 
   $effect(() => {
     if (editable) {
@@ -91,9 +92,9 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <i
     bind:this={edit}
-    class:icon={hover}
+    class:icon
     class:delete={editable}
-    style:display={hover ? "" : "none"}
+    style:display={icon ? "" : "none"}
     onclick={editable ? del : null}
     >{editable ? "delete" : hover ? "edit" : ""}</i
   >
