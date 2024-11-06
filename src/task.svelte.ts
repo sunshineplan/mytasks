@@ -77,7 +77,7 @@ class MyTasks {
       if (res.status) {
         await listTable.update(this.list.list, { list: name })
         await taskTable.where('list').equals(this.list.list).modify({ list: name })
-        this.lists = await db.table<List>('lists').toArray()
+        this.lists = await listTable.toArray()
         this.list.list = name
         return 0
       } else msg = res.message
@@ -163,9 +163,9 @@ class MyTasks {
           await listTable.where('list').equals(this.list.list).modify(i => { i.incomplete++ })
         }
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: this.tasks.incomplete
+          incomplete: $state.snapshot(this.tasks.incomplete)
         })
-        this.lists = await db.table<List>('lists').toArray()
+        this.lists = await listTable.toArray()
         await this.getTasks()
       } else {
         await fire('Error', res.message, 'error')
@@ -195,8 +195,8 @@ class MyTasks {
           i.completed++
         })
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: this.tasks.incomplete,
-          completed: this.tasks.completed
+          incomplete: $state.snapshot(this.tasks.incomplete),
+          completed: $state.snapshot(this.tasks.completed)
         })
         this.lists = await listTable.toArray()
         await this.getTasks()
@@ -223,8 +223,8 @@ class MyTasks {
         this.list.incomplete++
         this.list.completed--
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: this.tasks.incomplete,
-          completed: this.tasks.completed
+          incomplete: $state.snapshot(this.tasks.incomplete),
+          completed: $state.snapshot(this.tasks.completed)
         })
         await listTable.where('list').equals(this.list.list).modify(this.list)
         this.lists = await listTable.toArray()
@@ -245,8 +245,8 @@ class MyTasks {
         this.list.incomplete--
       }
       await taskTable.where('list').equals(this.list.list).modify({
-        incomplete: this.tasks.incomplete,
-        completed: this.tasks.completed
+        incomplete: $state.snapshot(this.tasks.incomplete),
+        completed: $state.snapshot(this.tasks.completed)
       })
       await listTable.where('list').equals(this.list.list).modify(this.list)
       this.lists = await listTable.toArray()
@@ -263,7 +263,7 @@ class MyTasks {
         this.tasks.incomplete.forEach(i => { if (i.id === a.id) i.seq = seq })
         this.tasks.incomplete.sort((a, b) => b.seq! - a.seq!)
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: this.tasks.incomplete
+          incomplete: $state.snapshot(this.tasks.incomplete)
         })
       } else await fire('Fatal', 'Failed to reorder.', 'error')
     } else await fire('Fatal', await resp.text(), 'error')

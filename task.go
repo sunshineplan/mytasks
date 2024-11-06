@@ -92,11 +92,11 @@ func getTask(c *gin.Context) {
 
 func addTask(t task, userID string, completed bool) (mongodb.ObjectID, int, error) {
 	doc := struct {
-		Task    string `json:"task" bson:"task"`
-		List    string `json:"list" bson:"list"`
-		User    string `json:"user" bson:"user"`
-		Created any    `json:"created" bson:"created"`
-		Seq     int    `json:"seq,omitempty" bson:"seq,omitempty"`
+		Task    string       `json:"task" bson:"task"`
+		List    string       `json:"list" bson:"list"`
+		User    string       `json:"user" bson:"user"`
+		Created mongodb.Time `json:"created" bson:"created"`
+		Seq     int          `json:"seq,omitempty" bson:"seq,omitempty"`
 	}{
 		Task: t.Task,
 		List: t.List,
@@ -124,7 +124,7 @@ func addTask(t task, userID string, completed bool) (mongodb.ObjectID, int, erro
 			doc.Seq = tasks[0].Seq + 1
 		}
 	}
-	doc.Created = client.Date(time.Now())
+	doc.Created = client.Time(time.Now())
 	id, err := client.InsertOne(doc)
 	if err != nil {
 		return nil, 0, err
