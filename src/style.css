@@ -86,6 +86,7 @@ li>span {
   background-color: #eaf5fd;
 }
 
+.new-task,
 .selected {
   cursor: text;
   border-bottom-width: 1px;
@@ -93,6 +94,7 @@ li>span {
   background-color: #eaf5fd;
 }
 
+.new-task:hover,
 .selected:hover {
   box-shadow: none;
 }

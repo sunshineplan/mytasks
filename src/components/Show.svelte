@@ -182,12 +182,15 @@
       ? "height: calc(50% - 85px)"
       : "height: calc(100% - 170px)"}
   >
-    <li class="list-group-item" class:selected={showNewTask}>
+    <li
+      class="list-group-item"
+      class:new-task={showNewTask}
+      style:display={showNewTask ? "" : "none"}
+    >
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <span
         class="task"
         style="padding-left: 48px"
-        style:display={showNewTask ? "" : "none"}
         bind:this={newTaskElement}
         bind:textContent={newTask}
         contenteditable
