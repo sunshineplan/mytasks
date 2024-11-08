@@ -22,6 +22,7 @@ class MyTasks {
     await taskTable.clear()
   }
   async reset() {
+    this.username = ''
     this.list = {} as List
     this.lists = []
     this.tasks = {} as Tasks
