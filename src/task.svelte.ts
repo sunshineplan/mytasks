@@ -146,7 +146,7 @@ class MyTasks {
       const more = await resp.json()
       this.completed = this.completed.concat(more)
       await taskTable.where('list').equals(this.list.list).modify({
-        completed: this.completed
+        completed: $state.snapshot(this.completed)
       })
     } else await fire('Fatal', await resp.text(), 'error')
   }
