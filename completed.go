@@ -29,7 +29,7 @@ func moreCompleted(c *gin.Context) {
 	tasks := []task{}
 	if err := completedClient.Find(
 		mongodb.M{"list": data.List, "user": user.ID.Hex()},
-		&mongodb.FindOpt{Sort: mongodb.M{"created": 1}, Limit: 30, Skip: data.Start},
+		&mongodb.FindOpt{Sort: mongodb.M{"created": -1}, Limit: 30, Skip: data.Start},
 		&tasks,
 	); err != nil {
 		svc.Println("Failed to query tasks:", err)
