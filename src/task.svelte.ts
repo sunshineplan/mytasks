@@ -13,9 +13,10 @@ const taskTable = db.table<Tasks>('tasks')
 class MyTasks {
   username = $state('')
   component = $state('show')
-  list = $state<List>({} as List)
   lists = $state<List[]>([])
-  tasks = $state<Tasks>({} as Tasks)
+  list = $state<List>({} as List)
+  incomplete = $state<Task[]>([])
+  completed = $state<Task[]>([])
   controller = $state(new AbortController())
   async clear() {
     await listTable.clear()
@@ -23,9 +24,10 @@ class MyTasks {
   }
   async reset() {
     this.username = ''
-    this.list = {} as List
     this.lists = []
-    this.tasks = {} as Tasks
+    this.list = {} as List
+    this.incomplete = []
+    this.completed = []
     await this.clear()
   }
   async init() {
@@ -109,14 +111,19 @@ class MyTasks {
       }
     }
     const res = await taskTable.where('list').equals(this.list.list).first()
-    if (res) this.tasks = res
-    else this.tasks = { list: this.list.list, incomplete: [], completed: [] }
+    if (res) {
+      this.incomplete = res.incomplete
+      this.completed = res.completed
+    } else {
+      this.incomplete = []
+      this.completed = []
+    }
   }
   async getTasks(more?: number, goal?: number) { // need check
     await this.#loadTasks()
     if (this.list.list) {
       const total = this.list.completed
-      const len = this.tasks.completed.length
+      const len = this.completed.length
       if (!goal)
         if (more) goal = Math.min(len + more, total)
         else goal = Math.min(10, total)
@@ -137,16 +144,16 @@ class MyTasks {
     const resp = await post('/completed/more', { list: this.list.list, start })
     if (resp.ok) {
       const more = await resp.json()
-      this.tasks.completed = this.tasks.completed.concat(more)
+      this.completed = this.completed.concat(more)
       await taskTable.where('list').equals(this.list.list).modify({
-        completed: this.tasks.completed
+        completed: this.completed
       })
     } else await fire('Fatal', await resp.text(), 'error')
   }
   async saveTask(task: Task) {
     let url = '/task/add'
     if (task.id) {
-      const old = this.tasks.incomplete.find(i => i.id == task.id)
+      const old = this.incomplete.find(i => i.id == task.id)
       if (old!.task == task.task) {
         return 0
       }
@@ -158,12 +165,12 @@ class MyTasks {
     if (resp.ok) {
       const res = await resp.json()
       if (res.status == 1) {
-        if (task.id) this.tasks.incomplete = this.tasks.incomplete.map(i => {
+        if (task.id) this.incomplete = this.incomplete.map(i => {
           if (i.id === task.id) i.task = task.task
           return i
         })
         else {
-          this.tasks.incomplete = [
+          this.incomplete = [
             {
               id: res.id,
               list: task.list,
@@ -171,12 +178,12 @@ class MyTasks {
               created: new Date().toLocaleString(),
               seq: res.seq
             },
-            ...this.tasks.incomplete,
+            ...this.incomplete,
           ]
           await listTable.where('list').equals(this.list.list).modify(i => { i.incomplete++ })
         }
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: $state.snapshot(this.tasks.incomplete)
+          incomplete: $state.snapshot(this.incomplete)
         })
         this.lists = await listTable.toArray()
         await this.getTasks()
@@ -195,24 +202,24 @@ class MyTasks {
     if (resp.ok) {
       const res = await resp.json()
       if (res.status && res.id) {
-        const index = this.tasks.incomplete.findIndex(i => i.id == task.id)
-        this.tasks.completed = [
+        const index = this.incomplete.findIndex(i => i.id == task.id)
+        this.completed = [
           {
             id: res.id,
             list: this.list.list,
-            task: this.tasks.incomplete[index].task,
+            task: this.incomplete[index].task,
             created: new Date().toLocaleString()
           },
-          ...this.tasks.completed,
+          ...this.completed,
         ]
-        this.tasks.incomplete.splice(index, 1)
+        this.incomplete.splice(index, 1)
         await listTable.where('list').equals(this.list.list).modify(i => {
           i.incomplete--
           i.completed++
         })
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: $state.snapshot(this.tasks.incomplete),
-          completed: $state.snapshot(this.tasks.completed)
+          incomplete: $state.snapshot(this.incomplete),
+          completed: $state.snapshot(this.completed)
         })
         this.lists = await listTable.toArray()
         await this.getTasks()
@@ -226,23 +233,23 @@ class MyTasks {
     if (resp.ok) {
       const res = await resp.json()
       if (res.status && res.id) {
-        const index = this.tasks.completed.findIndex(i => i.id == task.id)
-        this.tasks.incomplete = [
+        const index = this.completed.findIndex(i => i.id == task.id)
+        this.incomplete = [
           {
             id: res.id,
             list: this.list.list,
-            task: this.tasks.completed[index].task,
+            task: this.completed[index].task,
             created: new Date().toLocaleString(),
             seq: res.seq
           },
-          ...this.tasks.incomplete,
+          ...this.incomplete,
         ]
-        this.tasks.completed.splice(index, 1)
+        this.completed.splice(index, 1)
         this.list.incomplete++
         this.list.completed--
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: $state.snapshot(this.tasks.incomplete),
-          completed: $state.snapshot(this.tasks.completed)
+          incomplete: $state.snapshot(this.incomplete),
+          completed: $state.snapshot(this.completed)
         })
         await listTable.where('list').equals(this.list.list).modify(this.list)
         this.lists = await listTable.toArray()
@@ -258,15 +265,15 @@ class MyTasks {
     const resp = await post(url + task.id)
     if (resp.ok) {
       if (done) {
-        this.tasks.completed = this.tasks.completed.filter(i => i.id != task.id)
+        this.completed = this.completed.filter(i => i.id != task.id)
         this.list.completed--
       } else {
-        this.tasks.incomplete = this.tasks.incomplete.filter(i => i.id != task.id)
+        this.incomplete = this.incomplete.filter(i => i.id != task.id)
         this.list.incomplete--
       }
       await taskTable.where('list').equals(this.list.list).modify({
-        incomplete: $state.snapshot(this.tasks.incomplete),
-        completed: $state.snapshot(this.tasks.completed)
+        incomplete: $state.snapshot(this.incomplete),
+        completed: $state.snapshot(this.completed)
       })
       await listTable.where('list').equals(this.list.list).modify(this.list)
       this.lists = await listTable.toArray()
@@ -280,12 +287,12 @@ class MyTasks {
     if (resp.ok) {
       if ((await resp.text()) == '1') {
         const seq = b.seq
-        if (a.seq! > b.seq!) this.tasks.incomplete.forEach(i => { if (i.seq! >= b.seq! && i.seq! < a.seq!) i.seq!++ })
-        else this.tasks.incomplete.forEach(i => { if (i.seq! > a.seq! && i.seq! <= b.seq!) i.seq!-- })
-        this.tasks.incomplete.forEach(i => { if (i.id === a.id) i.seq = seq })
-        this.tasks.incomplete.sort((a, b) => b.seq! - a.seq!)
+        if (a.seq! > b.seq!) this.incomplete.forEach(i => { if (i.seq! >= b.seq! && i.seq! < a.seq!) i.seq!++ })
+        else this.incomplete.forEach(i => { if (i.seq! > a.seq! && i.seq! <= b.seq!) i.seq!-- })
+        this.incomplete.forEach(i => { if (i.id === a.id) i.seq = seq })
+        this.incomplete.sort((a, b) => b.seq! - a.seq!)
         await taskTable.where('list').equals(this.list.list).modify({
-          incomplete: $state.snapshot(this.tasks.incomplete)
+          incomplete: $state.snapshot(this.incomplete)
         })
       } else await fire('Fatal', 'Failed to reorder.', 'error')
     } else await fire('Fatal', await resp.text(), 'error')

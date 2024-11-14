@@ -38,10 +38,10 @@
   </div>
   {#if show}
     <ul class="list-group list-group-flush" style="height:calc(50% - 85px)">
-      {#each mytasks.tasks.completed as task, i (task.id)}
-        <CompletedTask bind:task={mytasks.tasks.completed[i]} />
+      {#each mytasks.completed as task, i (task.id)}
+        <CompletedTask bind:task={mytasks.completed[i]} />
       {/each}
-      {#if mytasks.tasks.completed.length < mytasks.lists[index].completed}
+      {#if mytasks.completed.length < mytasks.lists[index].completed}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <li

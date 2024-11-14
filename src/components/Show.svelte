@@ -42,8 +42,8 @@
       swapThreshold: 0.5,
       onUpdate: async (e) => {
         await mytasks.swapTask(
-          mytasks.tasks.incomplete[e.oldIndex!],
-          mytasks.tasks.incomplete[e.newIndex!],
+          mytasks.incomplete[e.oldIndex!],
+          mytasks.incomplete[e.newIndex!],
         );
       },
     });
@@ -70,8 +70,8 @@
   };
   const edit = async (id: string, task: string) => {
     task = task.trim();
-    const index = mytasks.tasks.incomplete.findIndex((task) => task.id === id);
-    if (mytasks.tasks.incomplete[index].task != task)
+    const index = mytasks.incomplete.findIndex((task) => task.id === id);
+    if (mytasks.incomplete[index].task != task)
       await mytasks.saveTask({ id, task } as Task);
     selected = "";
   };
@@ -208,8 +208,8 @@
         }}
       ></span>
     </li>
-    {#each mytasks.tasks.incomplete as task, i (task.id)}
-      <IncompleteTask bind:selected bind:task={mytasks.tasks.incomplete[i]} />
+    {#each mytasks.incomplete as task, i (task.id)}
+      <IncompleteTask bind:selected bind:task={mytasks.incomplete[i]} />
     {/each}
   </ul>
   <Completed bind:show={showCompleted} />
