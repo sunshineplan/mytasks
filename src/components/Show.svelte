@@ -31,8 +31,8 @@
   });
 
   onMount(() => {
-    mytasks.subscribe(true);
-    return () => mytasks.controller.abort();
+    mytasks.subscribe();
+    return () => mytasks.abort();
   });
 
   onMount(() => {

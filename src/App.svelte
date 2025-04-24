@@ -22,7 +22,7 @@
   };
 
   const logout = async () => {
-    mytasks.controller.abort();
+    mytasks.abort();
     const resp = await post(window.universal + "/logout", undefined, true);
     if (resp.ok) {
       await mytasks.init();

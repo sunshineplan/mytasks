@@ -12,12 +12,14 @@ const taskTable = db.table<Tasks>('tasks')
 
 class MyTasks {
   username = $state('')
+  #interval = 0
   component = $state('show')
   lists = $state<List[]>([])
   list = $state<List>({} as List)
   incomplete = $state<Task[]>([])
   completed = $state<Task[]>([])
-  controller = $state(new AbortController())
+  #timer = 0
+  #controller = new AbortController()
   async clear() {
     await listTable.clear()
     await taskTable.clear()
@@ -46,6 +48,7 @@ class MyTasks {
         await this.#getLists()
         await this.getTasks()
         this.username = username
+        this.#interval = Number(getCookie('interval') || 30)
       } else await this.reset()
     } else if (resp.status == 409) {
       await this.clear()
@@ -73,7 +76,7 @@ class MyTasks {
     else this.lists = [...this.lists, list]
   }
   async editList(name: string) {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/list/edit', { old: this.list.list, new: name })
     let msg = ''
     if (resp.ok) {
@@ -83,23 +86,23 @@ class MyTasks {
         await taskTable.where('list').equals(this.list.list).modify({ list: name })
         this.lists = await listTable.toArray()
         this.list.list = name
-        this.subscribe(true)
+        this.subscribe()
         return 0
       } else msg = res.message
     } else msg = await resp.text()
     await fire('Fatal', msg, 'error')
-    this.subscribe(true)
+    this.subscribe()
     return 1
   }
   async deleteList() {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/list/delete', { list: this.list.list })
     if (resp.ok) {
       await listTable.where('list').equals(this.list.list).delete()
       await taskTable.where('list').equals(this.list.list).delete()
       this.lists = await listTable.toArray()
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
   }
   async #loadTasks() {
     if (!this.list.list) {
@@ -160,7 +163,7 @@ class MyTasks {
       url = '/task/edit/' + task.id
     }
     else task.list = this.list.list
-    this.controller.abort()
+    this.abort()
     const resp = await post(url, task)
     if (resp.ok) {
       const res = await resp.json()
@@ -189,15 +192,15 @@ class MyTasks {
         await this.getTasks()
       } else {
         await fire('Error', res.message, 'error')
-        this.subscribe(true)
+        this.subscribe()
         return <number>res.error
       }
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
     return 0
   }
   async completeTask(task: Task) {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/task/complete/' + task.id)
     if (resp.ok) {
       const res = await resp.json()
@@ -225,10 +228,10 @@ class MyTasks {
         await this.getTasks()
       } else await fire('Error', 'Error', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
   }
   async revertTask(task: Task) {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/completed/revert/' + task.id)
     if (resp.ok) {
       const res = await resp.json()
@@ -256,12 +259,12 @@ class MyTasks {
         await this.getTasks()
       } else await fire('Error', 'Error', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
   }
   async deleteTask(task: Task, done?: boolean) {
     let url = '/task/delete/'
     if (done) url = '/completed/delete/'
-    this.controller.abort()
+    this.abort()
     const resp = await post(url + task.id)
     if (resp.ok) {
       if (done) {
@@ -279,10 +282,10 @@ class MyTasks {
       this.lists = await listTable.toArray()
       await this.getTasks()
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
   }
   async swapTask(a: Task, b: Task) {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/task/reorder', { list: this.list.list, orig: a.id, dest: b.id })
     if (resp.ok) {
       if ((await resp.text()) == '1') {
@@ -296,10 +299,10 @@ class MyTasks {
         })
       } else await fire('Fatal', 'Failed to reorder.', 'error')
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
   }
   async empty() {
-    this.controller.abort()
+    this.abort()
     const resp = await post('/completed/empty', { list: this.list.list })
     if (resp.ok) {
       await taskTable.where('list').equals(this.list.list).modify({ completed: [] })
@@ -307,35 +310,39 @@ class MyTasks {
       await listTable.where('list').equals(this.list.list).modify(this.list)
       this.lists = await listTable.toArray()
       await this.getTasks()
-      this.subscribe(true)
+      this.subscribe()
       return 0
     } else await fire('Fatal', await resp.text(), 'error')
-    this.subscribe(true)
+    this.subscribe()
     return 1
   }
-  async subscribe(reset?: boolean) {
-    if (reset)
-      this.controller = new AbortController()
-    let resp: Response
-    try {
-      resp = await fetch('/poll', { signal: this.controller.signal })
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return
-      console.error(e)
-      resp = new Response(null, { status: 500 })
-    }
-    if (resp.ok) {
-      const last = await resp.text()
-      if (last && getCookie('last') != last) {
-        await this.init()
+  subscribe() {
+    this.#controller = new AbortController()
+    const poll = async () => {
+      let resp: Response
+      try {
+        resp = await fetch('/poll', { signal: this.#controller.signal })
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        console.error(e)
+        resp = new Response(null, { status: 500 })
       }
-      await this.subscribe()
-    } else if (resp.status == 401) {
-      await this.init()
-    } else {
-      await new Promise((sleep) => setTimeout(sleep, 30000))
-      await this.subscribe()
+      let timeout = 30
+      if (resp.ok) {
+        const last = await resp.text()
+        if (last && getCookie('last') != last) await this.init()
+        timeout = this.#interval || 30
+      } else if (resp.status == 401) {
+        await this.init()
+        return
+      }
+      this.#timer = setTimeout(poll, timeout * 1000)
     }
-  };
+    poll()
+  }
+  abort() {
+    clearTimeout(this.#timer)
+    this.#controller.abort()
+  }
 }
 export const mytasks = new MyTasks

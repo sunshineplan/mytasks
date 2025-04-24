@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -121,6 +122,7 @@ func run() error {
 		c.Set("last", user.Last)
 		last, ok := checkLastModified(c)
 		c.SetCookie("last", last, 856400*365, "", "", false, false)
+		c.SetCookie("interval", strconv.FormatInt(int64(*poll/time.Second), 10), 0, "", "", false, false)
 		if ok {
 			c.String(200, user.Username)
 		} else {
@@ -128,7 +130,6 @@ func run() error {
 		}
 	})
 	router.GET("/poll", func(c *gin.Context) {
-		time.Sleep(*poll)
 		user, err := getUser(c)
 		if err == errNoUser || err == mongodb.ErrNoDocuments {
 			c.Status(401)
