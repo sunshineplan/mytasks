@@ -105,11 +105,8 @@ class MyTasks {
     this.subscribe()
   }
   async #loadTasks() {
-    if (this.list.list && !this.lists.some(list => list.list === this.list.list &&
-      list.completed === this.list.completed &&
-      list.incomplete === this.list.incomplete)) {
-      this.list = {} as List
-    }
+    if (this.list.list)
+      this.list = this.lists.find(list => list.list === this.list.list) || {} as List
     if (!this.list.list) {
       if (this.lists.length)
         this.list = this.lists[0]

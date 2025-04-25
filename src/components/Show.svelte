@@ -26,7 +26,6 @@
       newTaskElement.focus();
       return;
     }
-    mytasks.getTasks();
     editable = false;
   });
 
