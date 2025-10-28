@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/sunshineplan/database/mongodb"
 	"github.com/sunshineplan/database/mongodb/driver"
 	"github.com/sunshineplan/utils/retry"
@@ -14,7 +16,7 @@ func initDB() (err error) {
 	var client driver.Client
 	if err = retry.Do(func() error {
 		return meta.Get("mytasks_mongo", &client)
-	}, 3, 20); err != nil {
+	}, 3, 20*time.Second); err != nil {
 		return err
 	}
 
